@@ -14,8 +14,6 @@ public class Renaming
     {
         foreach (TypeDefinition type in assembly.MainModule.Types)
         {
-            
-
             type.Name = GenerateUniqueName();
 
             if (type.IsPublic)

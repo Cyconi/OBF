@@ -81,7 +81,6 @@ public static class StringEncryption
         
     }
 
-
     /*public static void InjectClass1(AssemblyDefinition assembly)
     {
         var module = assembly.MainModule;

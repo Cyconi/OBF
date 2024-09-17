@@ -36,11 +36,14 @@ internal class Program
         var readerParameters = new ReaderParameters { AssemblyResolver = resolver };
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
 
-
+        CodeInjection.InjectCode(assembly);
         //Renaming.RenameAssembly(assembly);
         //StringEncryption.InjectClass(assembly);  // bruh
         //EmbeddedStringEncryption.InjectClass(assembly);
         //StringEncryption.EncryptStrings(assembly); // bruhg
+        // Find the type containing the method to clone
+        
+        CodeInjection.CloneMethod(assembly.MainModule, "Cleaner", "API");
 
 
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
@@ -49,8 +52,8 @@ internal class Program
         assembly.Write(newDllPath);
         Console.WriteLine($"Obfuscated DLL written to: {newDllPath}");
 
-        File.Copy(newDllPath, additionalPath, true);
-        Console.WriteLine($"Obfuscated DLL copied to: {additionalPath}");
+        //File.Copy(newDllPath, additionalPath, true);
+        //Console.WriteLine($"Obfuscated DLL copied to: {additionalPath}");
     }
 
 }
