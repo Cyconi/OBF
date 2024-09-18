@@ -1,9 +1,11 @@
 ﻿using Mono.Cecil;
+using Mono.Cecil.Cil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace OBF.Algorithms;
 
@@ -25,6 +27,38 @@ public class Renaming
                     continue;
 
                 method.Name = GenerateUniqueName();
+
+                // still testing v
+
+                /*foreach (ParameterDefinition parameter in method.Parameters)
+                    parameter.Name = GenerateUniqueName();
+
+                foreach (VariableDefinition var in method.Body.Variables)
+                {
+                    var.VariableType = new TypeReference(
+                        var.VariableType.Namespace,
+                        GenerateUniqueName(),
+                        var.VariableType.Module,
+                        var.VariableType.Scope
+                    );
+                }
+                foreach (var instruction in method.Body.Instructions)
+                {
+                    if (instruction.Operand is VariableDefinition variable)
+                    {
+                        variable.VariableType = new TypeReference(
+                            variable.VariableType.Namespace,
+                            GenerateUniqueName(),
+                            variable.VariableType.Module,
+                            variable.VariableType.Scope
+                        );
+                    }
+                    else if (instruction.Operand is ParameterDefinition parameter)
+                        parameter.Name = GenerateUniqueName(); 
+                }
+
+                foreach (var gen in method.GenericParameters)
+                    gen.Name = GenerateUniqueName();*/
             }
 
             foreach (PropertyDefinition property in type.Properties)
