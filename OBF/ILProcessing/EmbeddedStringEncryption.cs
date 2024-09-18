@@ -113,4 +113,42 @@ public static class EmbeddedStringEncryption
         }
         return memory.ToArray();
     }
+
+
+    public static void AddDecryptionMethod(AssemblyDefinition assembly)
+    {
+        var module = assembly.MainModule;
+        var decryptMethod = new MethodDefinition("DecryptString",
+            MethodAttributes.Public | MethodAttributes.Static,
+            module.TypeSystem.String);
+
+        var inputParam = new ParameterDefinition("input", ParameterAttributes.None, module.TypeSystem.String);
+        var keyParam = new ParameterDefinition("key", ParameterAttributes.None, module.TypeSystem.Char);
+        decryptMethod.Parameters.Add(inputParam);
+        decryptMethod.Parameters.Add(keyParam);
+
+        var ilProcessor = decryptMethod.Body.GetILProcessor();
+        var bufferVar = new VariableDefinition(new ArrayType(module.TypeSystem.Char));
+        decryptMethod.Body.Variables.Add(bufferVar);
+
+        // Implement the decryption logic in IL
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(string).GetMethod("ToCharArray", Type.EmptyTypes))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc, bufferVar));
+
+        var loopStart = ilProcessor.Create(OpCodes.Ldloc, bufferVar);
+        ilProcessor.Append(loopStart);
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc, bufferVar));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc, bufferVar));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldlen));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Conv_I4));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stelem_I2));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc, bufferVar));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(string).GetConstructor(new[] { typeof(char[]) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ret));
+
+        module.Types[0].Methods.Add(decryptMethod);
+    }
+
 }

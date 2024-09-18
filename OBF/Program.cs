@@ -37,14 +37,14 @@ internal class Program
         var readerParameters = new ReaderParameters { AssemblyResolver = resolver };
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
 
-        StringEncryption.InjectClass(assembly);  // bruh
-        EmbeddedStringEncryption.InjectClass(assembly);
+        //StringEncryption.InjectClass(assembly);  // bruh
+        //EmbeddedStringEncryption.InjectClass(assembly);
         //StringEncryption.EncryptStrings(assembly); // bruhg
 
         //Clone.RandomMethod(assembly.MainModule);
-        CodeInjection.InjectCode(assembly);
+        //CodeInjection.InjectCode(assembly);
 
-        Renaming.RenameAssembly(assembly); // works
+        //Renaming.RenameAssembly(assembly); // works
 
 
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
