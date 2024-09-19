@@ -42,9 +42,9 @@ internal class Program
         //StringEncryption.EncryptStrings(assembly); // bruhg
 
         //Clone.RandomMethod(assembly.MainModule);
-        //CodeInjection.InjectCode(assembly);
+        CodeInjection.InjectCode(assembly); // works, want to add code to existing methods
 
-        Renaming.RenameAssembly(assembly); // works
+        //Renaming.RenameAssembly(assembly); // works, not sure i can do much more
 
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
         string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Hexed\Settings\UnityLoader\VRChat\Cheats\" + Path.GetFileName(newDllPath);
@@ -54,5 +54,8 @@ internal class Program
 
         File.Copy(newDllPath, additionalPath, true);
         Console.WriteLine($"Obfuscated DLL copied to: {additionalPath}");
+
+        Console.Write("\nPress any key to close this window . . .");
+        Console.ReadKey();
     }
 }

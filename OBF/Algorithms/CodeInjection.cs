@@ -28,19 +28,28 @@ internal class CodeInjection
 
         var types = new List<TypeDefinition>(assembly.MainModule.Types);
 
-        /*for (int i = 0; i < types.Count; i++)
+        /*for (int i = 0; i < 10; i++)
         {
-            var encryptionClass = new TypeDefinition(types[i].Namespace, "ClassName" + i, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed, assembly.MainModule.TypeSystem.Object);
-            JunkClass(assembly, encryptionClass, VarRng(3, 10), VarRng(0, 6));
-            //JunkMethods(types[i]);
-            //RandomMethod(types[i].Module);
-        }*/
-        /*for (int i = 0; i < types.Count / 4; i++)
-        {
-            var encryptionClass = new TypeDefinition("NameSpace", "ClassName" + i, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed, assembly.MainModule.TypeSystem.Object);
+            *//*var encryptionClass = new TypeDefinition("Class"+i, Renaming.GenerateUniqueName() + i, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed, assembly.MainModule.TypeSystem.Object);
             Generate.JunkClass(assembly, encryptionClass, Extensions.VarRng(3, i + 10), Extensions.VarRng(0, i + 6));
             //JunkMethods(types[i]);
-            //RandomMethod(types[i].Module);
+            //RandomMethod(types[i].Module);*//*
+            foreach (TypeDefinition type in types)
+            {
+                Generate.JunkMethods(type); // Fixed :>
+                Generate.JunkMethods(type);
+                Generate.JunkMethods(type);
+            }
+
+            foreach (TypeDefinition type in types)
+            {
+                Clone.RandomMethod(assembly.MainModule); // Fixed :>
+                Clone.RandomMethod(assembly.MainModule);
+                Clone.RandomMethod(assembly.MainModule);
+                Clone.RandomMethod(assembly.MainModule);
+                Clone.RandomMethod(assembly.MainModule);
+                Clone.RandomMethod(assembly.MainModule);
+            }
         }*/
 
         foreach (TypeDefinition type in types)

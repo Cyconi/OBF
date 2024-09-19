@@ -3,6 +3,7 @@ using Mono.Cecil.Cil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -14,54 +15,56 @@ public class Renaming
     private static readonly Random random = new();
     internal static void RenameAssembly(AssemblyDefinition assembly)
     {
+        foreach (var module in assembly.Modules)
+            foreach (var type in module.Types)
+                if (!string.IsNullOrEmpty(type.Namespace))
+                    type.Namespace = GenerateUniqueName(type.Namespace);
+
         foreach (TypeDefinition type in assembly.MainModule.Types)
         {
+            if ((type.Name.Equals("AppStart") || type.Name.Equals("Client")) && type.IsPublic)
+                type.Name = GenerateUniqueName(type.Name);
+
             if (type.IsEnum || type.IsPublic)
                 continue;
 
-            type.Name = GenerateUniqueName();
+            type.Name = GenerateUniqueName(type.Name);
 
             foreach (MethodDefinition method in type.Methods)
             {
-                if (method.HasOverrides || !method.HasBody || method.IsVirtual || method.DeclaringType != type)
+                if (!method.HasBody || method.IsVirtual || method.DeclaringType != type)
                     continue;
 
-                if (!method.IsConstructor && !method.HasOverrides && !method.IsSpecialName && (type.IsNotPublic || method.IsPrivate || method.IsAssembly))
-                    method.Name = GenerateUniqueName();
+                if (!method.IsConstructor && !method.IsSpecialName)
+                    method.Name = GenerateUniqueName(method.Name);
 
                 foreach (var gen in method.GenericParameters)
-                    if (!method.HasOverrides)
-                        gen.Name = GenerateUniqueName();
+                    gen.Name = GenerateUniqueName(gen.Name);
 
                 foreach (ParameterDefinition parameter in method.Parameters)
-                    if (!method.HasOverrides)
-                        parameter.Name = GenerateUniqueName();
+                    parameter.Name = GenerateUniqueName(parameter.Name);
             }
 
             foreach (PropertyDefinition property in type.Properties)
             {
-                if (property.IsSpecialName || property.DeclaringType != type || (type.IsPublic && (property.GetMethod?.IsPublic == true || property.SetMethod?.IsPublic == true)))
+                if (property.IsSpecialName || property.DeclaringType != type)
                     continue;
 
-                property.Name = GenerateUniqueName();
+                property.Name = GenerateUniqueName(property.Name);
 
-                if (property.GetMethod != null && property.GetMethod.DeclaringType == type && (type.IsNotPublic || property.GetMethod.IsPrivate || property.GetMethod.IsAssembly))
-                    property.GetMethod.Name = GenerateUniqueName();
+                if (property.GetMethod != null && property.GetMethod.DeclaringType == type)
+                    property.GetMethod.Name = GenerateUniqueName(property.GetMethod.Name);
 
-                if (property.SetMethod != null && property.SetMethod.DeclaringType == type && (type.IsNotPublic || property.SetMethod.IsPrivate || property.SetMethod.IsAssembly))
-                    property.SetMethod.Name = GenerateUniqueName();
+                if (property.SetMethod != null && property.SetMethod.DeclaringType == type)
+                    property.SetMethod.Name = GenerateUniqueName(property.SetMethod.Name);
             }
 
             foreach (FieldDefinition field in type.Fields)
-                if (!field.HasCustomAttributes && field.DeclaringType == type && (type.IsNotPublic || field.IsPrivate || field.IsAssembly))
-                    field.Name = GenerateUniqueName();
+                if (!field.HasCustomAttributes && field.DeclaringType == type)
+                    field.Name = GenerateUniqueName(field.Name);
         }
-
-        foreach (var module in assembly.Modules)
-            foreach (var type in module.Types)
-                if (!string.IsNullOrEmpty(type.Namespace))
-                    type.Namespace = GenerateUniqueName();
     }
+
 
     /*public static string GenerateUniqueName(int length = 20)
     {
@@ -74,5 +77,12 @@ public class Renaming
         return result.ToString();
     }*/
     public static string GenerateUniqueName() { return Guid.NewGuid().ToString("N"); }
+    public static string GenerateUniqueName(string originalName)
+    {
+        string newName = Guid.NewGuid().ToString("N");
+        Console.WriteLine($"Renaming {originalName}...");
+        return newName;
+    }
+
 }
 

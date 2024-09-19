@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OBF.Algorithms;
 
 namespace OBF.ILProcessing
 {
@@ -64,7 +65,7 @@ namespace OBF.ILProcessing
             {
                 // Select a random method from the selected class
                 var methods = randomType.Methods
-                    .Where(m => m.Body != null && !m.IsConstructor && !m.Name.Contains('.'))
+                    .Where(m => m.Body != null && !m.IsConstructor && !m.Name.Contains('.') && !m.Name.StartsWith("get_") && !m.Name.StartsWith("set_"))
                     .OrderBy(m => random.Next()) // Shuffle the methods list
                     .ToList();
 
@@ -92,7 +93,7 @@ namespace OBF.ILProcessing
             var targetType = targetTypes[random.Next(targetTypes.Count)];
 
             // Create a new method definition
-            var clonedMethod = new MethodDefinition(randomMethod.Name + "_Clone",
+            var clonedMethod = new MethodDefinition(Renaming.GenerateUniqueName(),
                 randomMethod.Attributes, randomMethod.ReturnType);
 
             // Copy parameters

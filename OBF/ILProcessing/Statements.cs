@@ -66,7 +66,7 @@ namespace OBF.ILProcessing
 
             ilProcessor.Append(endIf); // End if
         }
-        public static void AddSwitch1(MethodDefinition method)
+        public static void AddSwitch(MethodDefinition method)
         {
             if (method.Body == null)
                 return;
@@ -117,7 +117,7 @@ namespace OBF.ILProcessing
             // Mark the end of the switch statement
             ilProcessor.InsertBefore(firstInstruction, endSwitchLabel);
         }
-        public static void AddSwitch(MethodDefinition method)
+        public static void AddSwitch0(MethodDefinition method)
         {
             var ilProcessor = method.Body.GetILProcessor();
             var switchEnd = ilProcessor.Create(OpCodes.Nop);

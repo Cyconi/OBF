@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OBF.Algorithms;
 
 namespace OBF.ILProcessing
 {
@@ -37,7 +38,7 @@ namespace OBF.ILProcessing
             var voidType = module.ImportReference(typeof(void));
 
             // Create a new junk method
-            var junkMethod = new MethodDefinition("JunkMethod" + Guid.NewGuid().ToString("N"), MethodAttributes.Private | MethodAttributes.Static, intType);
+            var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, intType);
             junkMethod.Parameters.Add(new ParameterDefinition("param", ParameterAttributes.None, intType));
 
             // Create the method body
@@ -63,7 +64,7 @@ namespace OBF.ILProcessing
                 var randomClass = existingClasses[Extensions.VarRng(0, existingClasses.Count)];
 
                 // Create a new method in the selected class
-                var randomMethod = new MethodDefinition("RandomMethod" + Guid.NewGuid().ToString("N"), MethodAttributes.Private | MethodAttributes.Static, voidType);
+                var randomMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, voidType);
                 randomMethod.Parameters.Add(new ParameterDefinition("param" + i, ParameterAttributes.None, intType));
 
                 var randomIlProcessor = randomMethod.Body.GetILProcessor();
@@ -75,17 +76,21 @@ namespace OBF.ILProcessing
                 {
                     case 0:
                         Statements.AddIfElse(randomMethod);
+                        Statements.AddIfElse(randomMethod);
                         break;
                     case 1:
+                        Statements.AddSwitch(randomMethod);
                         Statements.AddSwitch(randomMethod);
                         break;
                     case 2:
                         Statements.AddIfElse(randomMethod);
                         Statements.AddIfElse(randomMethod);
+                        Statements.AddSwitch(randomMethod);
                         break;
                     case 3:
                         Statements.AddSwitch(randomMethod);
                         Statements.AddSwitch(randomMethod);
+                        Statements.AddIfElse(randomMethod);
                         break;
                     case 4:
                         Statements.AddSwitch(randomMethod);
@@ -96,9 +101,9 @@ namespace OBF.ILProcessing
                         Statements.AddSwitch(randomMethod);
                         break;
                     default:
-                        Statements.AddIfElse(randomMethod);
-                        Statements.AddIfElse(randomMethod);
+                        Statements.AddIfElse(randomMethod);                        
                         Statements.AddSwitch(randomMethod);
+                        Statements.AddIfElse(randomMethod);
                         break;
                 }
 
@@ -142,7 +147,7 @@ namespace OBF.ILProcessing
 
             // Add the junk method to the type
             type.Methods.Add(junkMethod);
-            Console.WriteLine($"Added junk method: {junkMethod.Name} to class: {type.Name}");
+            Console.WriteLine($"Added junk method {junkMethod.Name} to class {type.Name}");
         }
 
         public static void JunkClass(AssemblyDefinition assembly, TypeDefinition type, int methods = 5, int fields = 3)
@@ -152,14 +157,14 @@ namespace OBF.ILProcessing
             // Add fields to the class
             for (int i = 0; i < fields; i++)
             {
-                var field = CreateJunkField(module, module.Name + i, Extensions.SysRng());
+                var field = CreateJunkField(module, Renaming.GenerateUniqueName(), Extensions.SysRng());
                 type.Fields.Add(field);
             }
 
             // Add junk methods to the class
             for (int i = 0; i < methods; i++)
             {
-                var junkMethod = CreateJunkMethod(module, module.Name + i, Extensions.VarRng(), Extensions.VarRng(), 0, Extensions.SysRng());
+                var junkMethod = CreateJunkMethod(module, Renaming.GenerateUniqueName(), Extensions.VarRng(), Extensions.VarRng(), 0, Extensions.SysRng());
                 type.Methods.Add(junkMethod);
             }
 
@@ -180,7 +185,7 @@ namespace OBF.ILProcessing
 
             // Add parameters to the junk method (optional)
             for (int i = 0; i < parameters; i++)
-                junkMethod.Parameters.Add(new ParameterDefinition("param" + i, ParameterAttributes.None, pType));
+                junkMethod.Parameters.Add(new ParameterDefinition(Renaming.GenerateUniqueName(), ParameterAttributes.None, pType));
 
 
             // Create the method body
