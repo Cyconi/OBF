@@ -42,7 +42,7 @@ internal class Program
         //StringEncryption.EncryptStrings(assembly); // bruhg
 
         //Clone.RandomMethod(assembly.MainModule);
-        CodeInjection.InjectCode(assembly);
+        //CodeInjection.InjectCode(assembly);
 
         Renaming.RenameAssembly(assembly); // works
 

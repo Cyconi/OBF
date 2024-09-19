@@ -16,18 +16,17 @@ public class Renaming
     {
         foreach (TypeDefinition type in assembly.MainModule.Types)
         {
-            if (!type.IsPublic)
-                type.Name = GenerateUniqueName();
-
-            if (type.IsEnum)
+            if (type.IsEnum || type.IsPublic)
                 continue;
+
+            type.Name = GenerateUniqueName();
 
             foreach (MethodDefinition method in type.Methods)
             {
                 if (method.HasOverrides || !method.HasBody || method.IsVirtual || method.DeclaringType != type)
                     continue;
 
-                if (method.IsConstructor && !method.HasOverrides && !method.IsSpecialName && (type.IsNotPublic || method.IsPrivate || method.IsAssembly))
+                if (!method.IsConstructor && !method.HasOverrides && !method.IsSpecialName && (type.IsNotPublic || method.IsPrivate || method.IsAssembly))
                     method.Name = GenerateUniqueName();
 
                 foreach (var gen in method.GenericParameters)
@@ -64,7 +63,7 @@ public class Renaming
                     type.Namespace = GenerateUniqueName();
     }
 
-    public static string GenerateUniqueName(int length = 20)
+    /*public static string GenerateUniqueName(int length = 20)
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         StringBuilder result = new StringBuilder(length);
@@ -73,7 +72,7 @@ public class Renaming
             result.Append(chars[random.Next(chars.Length)]);
 
         return result.ToString();
-    }
-    //public static string GenerateUniqueName() { return Guid.NewGuid().ToString(); }
+    }*/
+    public static string GenerateUniqueName() { return Guid.NewGuid().ToString("N"); }
 }
 
