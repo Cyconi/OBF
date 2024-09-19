@@ -16,72 +16,46 @@ public class Renaming
     {
         foreach (TypeDefinition type in assembly.MainModule.Types)
         {
-            type.Name = GenerateUniqueName();
+            if (!type.IsPublic)
+                type.Name = GenerateUniqueName();
 
-            if (type.IsPublic)
+            if (type.IsEnum)
                 continue;
 
             foreach (MethodDefinition method in type.Methods)
             {
-                if (method.HasOverrides || !method.HasBody || method.IsVirtual || method.IsSpecialName)
+                if (method.HasOverrides || !method.HasBody || method.IsVirtual || method.DeclaringType != type)
                     continue;
 
-                method.Name = GenerateUniqueName();
-
-                // still testing v
-
-                /*foreach (ParameterDefinition parameter in method.Parameters)
-                    parameter.Name = GenerateUniqueName();
-
-                foreach (VariableDefinition var in method.Body.Variables)
-                {
-                    var.VariableType = new TypeReference(
-                        var.VariableType.Namespace,
-                        GenerateUniqueName(),
-                        var.VariableType.Module,
-                        var.VariableType.Scope
-                    );
-                }
-                foreach (var instruction in method.Body.Instructions)
-                {
-                    if (instruction.Operand is VariableDefinition variable)
-                    {
-                        variable.VariableType = new TypeReference(
-                            variable.VariableType.Namespace,
-                            GenerateUniqueName(),
-                            variable.VariableType.Module,
-                            variable.VariableType.Scope
-                        );
-                    }
-                    else if (instruction.Operand is ParameterDefinition parameter)
-                        parameter.Name = GenerateUniqueName(); 
-                }
+                if (method.IsConstructor && !method.HasOverrides && !method.IsSpecialName && (type.IsNotPublic || method.IsPrivate || method.IsAssembly))
+                    method.Name = GenerateUniqueName();
 
                 foreach (var gen in method.GenericParameters)
-                    gen.Name = GenerateUniqueName();*/
+                    if (!method.HasOverrides)
+                        gen.Name = GenerateUniqueName();
+
+                foreach (ParameterDefinition parameter in method.Parameters)
+                    if (!method.HasOverrides)
+                        parameter.Name = GenerateUniqueName();
             }
 
             foreach (PropertyDefinition property in type.Properties)
             {
-                if (property.IsSpecialName)
+                if (property.IsSpecialName || property.DeclaringType != type || (type.IsPublic && (property.GetMethod?.IsPublic == true || property.SetMethod?.IsPublic == true)))
                     continue;
 
                 property.Name = GenerateUniqueName();
 
-                if (property.GetMethod != null)
+                if (property.GetMethod != null && property.GetMethod.DeclaringType == type && (type.IsNotPublic || property.GetMethod.IsPrivate || property.GetMethod.IsAssembly))
                     property.GetMethod.Name = GenerateUniqueName();
 
-                if (property.SetMethod != null)
+                if (property.SetMethod != null && property.SetMethod.DeclaringType == type && (type.IsNotPublic || property.SetMethod.IsPrivate || property.SetMethod.IsAssembly))
                     property.SetMethod.Name = GenerateUniqueName();
             }
 
             foreach (FieldDefinition field in type.Fields)
-            {
-                if (field.HasCustomAttributes)
-                    continue;
-
-                field.Name = GenerateUniqueName();
-            }
+                if (!field.HasCustomAttributes && field.DeclaringType == type && (type.IsNotPublic || field.IsPrivate || field.IsAssembly))
+                    field.Name = GenerateUniqueName();
         }
 
         foreach (var module in assembly.Modules)
@@ -89,6 +63,7 @@ public class Renaming
                 if (!string.IsNullOrEmpty(type.Namespace))
                     type.Namespace = GenerateUniqueName();
     }
+
     public static string GenerateUniqueName(int length = 20)
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -100,6 +75,5 @@ public class Renaming
         return result.ToString();
     }
     //public static string GenerateUniqueName() { return Guid.NewGuid().ToString(); }
-
 }
 

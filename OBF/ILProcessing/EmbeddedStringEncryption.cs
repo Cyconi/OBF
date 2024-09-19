@@ -114,7 +114,6 @@ public static class EmbeddedStringEncryption
         return memory.ToArray();
     }
 
-
     public static void AddDecryptionMethod(AssemblyDefinition assembly)
     {
         var module = assembly.MainModule;
