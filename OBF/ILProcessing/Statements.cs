@@ -11,43 +11,6 @@ namespace OBF.ILProcessing
 {
     internal class Statements
     {
-        public static void AddIfElse1(MethodDefinition method)
-        {
-            if (method.Body == null)
-                return;
-
-            var ilProcessor = method.Body.GetILProcessor();
-            var instructions = method.Body.Instructions;
-
-            // Create labels for branching
-            var elseLabel = ilProcessor.Create(OpCodes.Nop);
-            var endIfLabel = ilProcessor.Create(OpCodes.Nop);
-
-            // Insert the condition at the beginning of the method
-            var firstInstruction = instructions.First();
-
-            // Load the condition onto the stack (e.g., load a constant value)
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, 1)); // Load constant 1 (true)
-
-            // Branch to the else block if the condition is false
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Brfalse, elseLabel));
-
-            // Generate the code for the if block
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldstr, "If block executed"));
-            //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, method.Module.ImportReference(typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) }))));
-
-            // Branch to the end of the if-else statement
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, endIfLabel));
-
-            // Generate the code for the else block
-            ilProcessor.InsertBefore(firstInstruction, elseLabel);
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldstr, "Else block executed"));
-            //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, method.Module.ImportReference(typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) }))));
-
-            // Mark the end of the if-else statement
-            ilProcessor.InsertBefore(firstInstruction, endIfLabel);
-        }
-
         public static void AddIfElse(MethodDefinition method)
         {
             var ilProcessor = method.Body.GetILProcessor();
@@ -67,57 +30,6 @@ namespace OBF.ILProcessing
             ilProcessor.Append(endIf); // End if
         }
         public static void AddSwitch(MethodDefinition method)
-        {
-            if (method.Body == null)
-                return;
-
-            var ilProcessor = method.Body.GetILProcessor();
-            var instructions = method.Body.Instructions;
-
-            // Create labels for each case and the default case
-            var case0Label = ilProcessor.Create(OpCodes.Nop);
-            var case1Label = ilProcessor.Create(OpCodes.Nop);
-            var case2Label = ilProcessor.Create(OpCodes.Nop);
-            var defaultLabel = ilProcessor.Create(OpCodes.Nop);
-            var endSwitchLabel = ilProcessor.Create(OpCodes.Nop);
-
-            // Insert the switch value at the beginning of the method
-            var firstInstruction = instructions.First();
-
-            // Load the switch value onto the stack (e.g., load a constant value)
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(4, 100))); // Load a random value between 0 and 2
-
-            // Generate the switch instruction
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Switch, new Instruction[] { case0Label, case1Label, case2Label }));
-
-            // Generate the code for case 0
-            ilProcessor.InsertBefore(firstInstruction, case0Label);
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldstr, "Case 0 executed"));
-            //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, method.Module.ImportReference(typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) }))));
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, endSwitchLabel));
-
-            // Generate the code for case 1
-            ilProcessor.InsertBefore(firstInstruction, case1Label);
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldstr, "Case 1 executed"));
-            //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, method.Module.ImportReference(typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) }))));
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, endSwitchLabel));
-
-            // Generate the code for case 2
-            ilProcessor.InsertBefore(firstInstruction, case2Label);
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldstr, "Case 2 executed"));
-            //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, method.Module.ImportReference(typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) }))));
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, endSwitchLabel));
-
-            // Generate the code for the default case
-            ilProcessor.InsertBefore(firstInstruction, defaultLabel);
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldstr, "Default case executed"));
-            //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, method.Module.ImportReference(typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) }))));
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, endSwitchLabel));
-
-            // Mark the end of the switch statement
-            ilProcessor.InsertBefore(firstInstruction, endSwitchLabel);
-        }
-        public static void AddSwitch0(MethodDefinition method)
         {
             var ilProcessor = method.Body.GetILProcessor();
             var switchEnd = ilProcessor.Create(OpCodes.Nop);
@@ -153,6 +65,136 @@ namespace OBF.ILProcessing
 
             ilProcessor.Append(switchEnd); // End switch
         }
+        public static void AddIfWithMethod(MethodDefinition method, TypeDefinition type)
+        {
+            if (!method.HasBody)
+                return;
 
+            var ilProcessor = method.Body.GetILProcessor();
+            var firstInstruction = method.Body.Instructions.FirstOrDefault();
+            if (firstInstruction == null)
+                return;
+
+            var endIf = ilProcessor.Create(OpCodes.Nop);
+
+            // Create a junk method
+            var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, method.Module.TypeSystem.Void);
+            type.Methods.Add(junkMethod);
+            var junkIlProcessor = junkMethod.Body.GetILProcessor();
+
+            // Fill the junk method with random junk code
+            var intType = method.Module.TypeSystem.Int32;
+            var resultVariable = new VariableDefinition(intType);
+            junkMethod.Body.Variables.Add(resultVariable);
+            
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Add)); // Add the two constants
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ret)); // Return the value
+            
+            // Insert dummy if-else logic with a condition that is always false
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4_1)); // Load constant 0 (!true)
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Brtrue_S, endIf)); // Branch to endIf if true (which it never is)
+
+            // If block
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod)); // Call junk method
+
+            ilProcessor.InsertBefore(firstInstruction, endIf); // End if
+
+            // Log to the console
+            Console.WriteLine($"Injected if-else obfuscation into method: {type.Name}.{method.Name}");
+        }
+        public static void AddSwitchWithMethod(MethodDefinition method, TypeDefinition type)
+        {
+            if (!method.HasBody)
+                return;
+
+            var ilProcessor = method.Body.GetILProcessor();
+            var firstInstruction = method.Body.Instructions.FirstOrDefault();
+            if (firstInstruction == null)
+                return;
+
+            var switchEnd = ilProcessor.Create(OpCodes.Nop);
+            var case1 = ilProcessor.Create(OpCodes.Nop);
+            var case2 = ilProcessor.Create(OpCodes.Nop);
+            var case3 = ilProcessor.Create(OpCodes.Nop);
+
+            // Create a junk method
+            var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, method.Module.TypeSystem.Void);
+            type.Methods.Add(junkMethod);
+            var junkIlProcessor = junkMethod.Body.GetILProcessor();
+
+            // Fill the junk method with random junk code
+            var intType = method.Module.TypeSystem.Int32;
+            var resultVariable = new VariableDefinition(intType);
+            junkMethod.Body.Variables.Add(resultVariable);
+
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Add)); // Add the two constants
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ret)); // Return the value
+
+            // Insert dummy switch logic with a condition that is always false
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, -1)); // Load constant -1 (an invalid case)
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Switch, new Instruction[] { case1, case2, case3 })); // Switch statement
+
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, switchEnd));
+
+            // Case 1
+            ilProcessor.InsertBefore(firstInstruction, case1);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod)); // Call junk method
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, switchEnd)); // Break
+
+            // Case 2
+            ilProcessor.InsertBefore(firstInstruction, case2);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod)); // Call junk method
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, switchEnd)); // Break
+
+            // Case 3
+            ilProcessor.InsertBefore(firstInstruction, case3);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod)); // Call junk method
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, switchEnd));
+
+            ilProcessor.InsertBefore(firstInstruction, switchEnd); // End switch
+
+            // Log to the console
+            Console.WriteLine($"Injected switch obfuscation into method: {type.Name}.{method.Name}");
+        }
+        public static void AddMethodCall(MethodDefinition method, TypeDefinition type)
+        {
+            if (!method.HasBody)
+                return;
+
+            var ilProcessor = method.Body.GetILProcessor();
+            var firstInstruction = method.Body.Instructions.FirstOrDefault();
+            if (firstInstruction == null)
+                return;
+
+            // Create a new method with obfuscation logic
+            var newMethod = new MethodDefinition("Obfuscated_" + method.Name, MethodAttributes.Private | MethodAttributes.Static, method.ReturnType);
+            type.Methods.Add(newMethod);
+
+            var newIlProcessor = newMethod.Body.GetILProcessor();
+            var nopInstruction = newIlProcessor.Create(OpCodes.Nop);
+            var branchInstruction = newIlProcessor.Create(OpCodes.Br_S, nopInstruction);
+            var retInstruction = newIlProcessor.Create(OpCodes.Ret);
+
+            // Add dummy instructions
+            newIlProcessor.Append(newIlProcessor.Create(OpCodes.Ldc_I4, 0));
+            newIlProcessor.Append(newIlProcessor.Create(OpCodes.Brfalse_S, nopInstruction));
+            newIlProcessor.Append(branchInstruction);
+            newIlProcessor.Append(nopInstruction);
+            newIlProcessor.Append(retInstruction);
+
+            // Call the new method from the original method
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, newMethod));
+
+            // Log to the console
+            Console.WriteLine($"Injected control flow obfuscation into method: {type.Name}.{method.Name}");
+        }
     }
 }

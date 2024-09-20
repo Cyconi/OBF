@@ -36,15 +36,16 @@ internal class Program
         resolver.AddSearchDirectory(Path.GetDirectoryName(dllPath));
         var readerParameters = new ReaderParameters { AssemblyResolver = resolver };
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
+        Renaming.OriginalAssembly = assembly;
 
         StringEncryption.InjectClass(assembly);  // bruh
-        //EmbeddedStringEncryption.InjectClass(assembly);
+        EmbeddedStringEncryption.InjectClass(assembly);
         //StringEncryption.EncryptStrings(assembly); // bruhg
 
-        //Clone.RandomMethod(assembly.MainModule);
         CodeInjection.InjectCode(assembly); // works, want to add code to existing methods
 
-        //Renaming.RenameAssembly(assembly); // works, not sure i can do much more
+        Renaming.RenameAssembly(assembly); // works, not sure i can do much more
+
 
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
         string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Hexed\Settings\UnityLoader\VRChat\Cheats\" + Path.GetFileName(newDllPath);
