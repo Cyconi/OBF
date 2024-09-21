@@ -10,7 +10,7 @@ namespace OBF.Algorithms;
 
 public static class StringEncryption
 {
-    public static void InjectClass(AssemblyDefinition assembly)
+    public static void ing(AssemblyDefinition assembly)
     {
         var module = assembly.MainModule;
         var encryptionClass = new TypeDefinition("Embed", "EmbeddedStringEncryption", TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed, module.TypeSystem.Object);
@@ -80,43 +80,112 @@ public static class StringEncryption
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ret));
         
     }
-
-    /*public static void InjectClass1(AssemblyDefinition assembly)
+    public static void AddDecryptionMethod(AssemblyDefinition assembly)
     {
         var module = assembly.MainModule;
-        var encryptionClass = new TypeDefinition("Embed", "EmbeddedStringEncryption",
-            TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed,
-            module.TypeSystem.Object);
+        var encryptionClass = CreateEncryptionClass(module);
 
-        // Define the OnDecrypt method
-        var onDecryptMethodDef = new MethodDefinition("OnDecrypt", MethodAttributes.Public | MethodAttributes.Static, module.TypeSystem.Byte.MakeArrayType());
-        onDecryptMethodDef.Parameters.Add(new ParameterDefinition("bytes", ParameterAttributes.None, module.TypeSystem.Byte.MakeArrayType()));
-        onDecryptMethodDef.Parameters.Add(new ParameterDefinition("key", ParameterAttributes.None, module.TypeSystem.Byte.MakeArrayType()));
-        onDecryptMethodDef.Parameters.Add(new ParameterDefinition("iv", ParameterAttributes.None, module.TypeSystem.Byte.MakeArrayType()));
-
-        var ilProcessorOnDecrypt = onDecryptMethodDef.Body.GetILProcessor();
-        ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ret));
-
+        var onDecryptMethodDef = CreateOnDecryptMethod(module);
         encryptionClass.Methods.Add(onDecryptMethodDef);
 
-        // Define the DecryptString method
-        var decryptMethod = new MethodDefinition("DecryptString", MethodAttributes.Public | MethodAttributes.Static, module.TypeSystem.String);
-        decryptMethod.Parameters.Add(new ParameterDefinition("encryptedText", ParameterAttributes.None, module.TypeSystem.String));
-        decryptMethod.Parameters.Add(new ParameterDefinition("keyString", ParameterAttributes.None, module.TypeSystem.String));
-        decryptMethod.Parameters.Add(new ParameterDefinition("ivString", ParameterAttributes.None, module.TypeSystem.String));
+        var decryptMethod = CreateDecryptStringMethod(module, onDecryptMethodDef);
+        encryptionClass.Methods.Add(decryptMethod);
 
-        var ilProcessor = decryptMethod.Body.GetILProcessor();
+        module.Types.Add(encryptionClass);
+    }
+
+    private static TypeDefinition CreateEncryptionClass(ModuleDefinition module)
+    {
+        return new TypeDefinition("Embed", "EmbeddedStringEncryption",
+            TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed,
+            module.TypeSystem.Object);
+    }
+
+    private static MethodDefinition CreateOnDecryptMethod(ModuleDefinition module)
+    {
+        var method = new MethodDefinition("OnDecrypt",
+            MethodAttributes.Public | MethodAttributes.Static,
+            module.TypeSystem.Byte.MakeArrayType());
+
+        method.Parameters.Add(new ParameterDefinition("bytes", ParameterAttributes.None, module.TypeSystem.Byte.MakeArrayType()));
+        method.Parameters.Add(new ParameterDefinition("key", ParameterAttributes.None, module.TypeSystem.Byte.MakeArrayType()));
+        method.Parameters.Add(new ParameterDefinition("iv", ParameterAttributes.None, module.TypeSystem.Byte.MakeArrayType()));
+
+        var ilProcessor = method.Body.GetILProcessor();
+        ilProcessor.Body.Variables.Add(new VariableDefinition(module.ImportReference(typeof(Aes))));
+        ilProcessor.Body.Variables.Add(new VariableDefinition(module.ImportReference(typeof(MemoryStream))));
+        ilProcessor.Body.Variables.Add(new VariableDefinition(module.ImportReference(typeof(CryptoStream))));
+
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Aes).GetMethod("Create", Type.EmptyTypes))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetProperty("Key").GetSetMethod())));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_2));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetProperty("IV").GetSetMethod())));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Newobj, module.ImportReference(typeof(MemoryStream).GetConstructor(Type.EmptyTypes))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetMethod("CreateDecryptor", Type.EmptyTypes))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Newobj, module.ImportReference(typeof(CryptoStream).GetConstructor(new[] { typeof(Stream), typeof(ICryptoTransform), typeof(CryptoStreamMode) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_2));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_2));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldlen));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Conv_I4));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("Write", new[] { typeof(byte[]), typeof(int), typeof(int) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_2));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("FlushFinalBlock", Type.EmptyTypes))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(MemoryStream).GetMethod("ToArray", Type.EmptyTypes))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ret));
 
-        encryptionClass.Methods.Add(decryptMethod);
-        module.Types.Add(encryptionClass);
+        return method;
+    }
 
-        // Import the OnDecrypt method reference
-        var onDecryptMethod = module.ImportReference(onDecryptMethodDef);
+    private static MethodDefinition CreateDecryptStringMethod(ModuleDefinition module, MethodReference onDecryptMethod)
+    {
+        var method = new MethodDefinition("DecryptString",
+            MethodAttributes.Public | MethodAttributes.Static,
+            module.TypeSystem.String);
 
-        // Add a simple call to the OnDecrypt method in the DecryptString method
-        ilProcessor.InsertBefore(decryptMethod.Body.Instructions[0], ilProcessor.Create(OpCodes.Call, onDecryptMethod));
-    }*/
+        method.Parameters.Add(new ParameterDefinition("encryptedText", ParameterAttributes.None, module.TypeSystem.String));
+        method.Parameters.Add(new ParameterDefinition("keyString", ParameterAttributes.None, module.TypeSystem.String));
+        method.Parameters.Add(new ParameterDefinition("ivString", ParameterAttributes.None, module.TypeSystem.String));
+
+        var ilProcessor = method.Body.GetILProcessor();
+        ilProcessor.Body.Variables.Add(new VariableDefinition(module.TypeSystem.Byte.MakeArrayType()));
+        ilProcessor.Body.Variables.Add(new VariableDefinition(module.TypeSystem.Byte.MakeArrayType()));
+        ilProcessor.Body.Variables.Add(new VariableDefinition(module.TypeSystem.Byte.MakeArrayType()));
+        ilProcessor.Body.Variables.Add(new VariableDefinition(module.TypeSystem.Byte.MakeArrayType()));
+
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_2));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_2));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_1));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_2));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, onDecryptMethod));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_3));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Encoding).GetProperty("UTF8").GetGetMethod())));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_3));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Encoding).GetMethod("GetString", new[] { typeof(byte[]) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Ret));
+
+        return method;
+    }
+
 
     public static void EncryptStrings(AssemblyDefinition assembly)
     {

@@ -38,13 +38,13 @@ internal class Program
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
         Renaming.OriginalAssembly = assembly;
 
-        StringEncryption.InjectClass(assembly);  // bruh
-        EmbeddedStringEncryption.InjectClass(assembly);
-        //StringEncryption.EncryptStrings(assembly); // bruhg
+        StringEncryption.AddDecryptionMethod(assembly);  // bruh
+        //EmbeddedStringEncryption.InjectClass(assembly);
+        StringEncryption.EncryptStrings(assembly); // bruhg
 
-        CodeInjection.InjectCode(assembly); // works, want to add code to existing methods
+        //CodeInjection.InjectCode(assembly); // works, want to add class injection
 
-        Renaming.RenameAssembly(assembly); // works, not sure i can do much more
+        //Renaming.RenameAssembly(assembly); // works, not sure i can do much more
 
 
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
