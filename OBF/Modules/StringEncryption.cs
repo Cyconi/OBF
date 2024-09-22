@@ -6,7 +6,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace OBF.Algorithms;
+namespace OBF.Modules;
 
 public static class StringEncryption
 {

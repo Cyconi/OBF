@@ -5,12 +5,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OBF.Algorithms;
+using OBF.Modules;
 
 namespace OBF.ILProcessing
 {
     internal class Clone
     {
+        public static List<MethodDefinition> clonedMethods = new List<MethodDefinition>();
         public static void MethodbyName(ModuleDefinition module, string className, string methodName)
         {
             var type = module.Types.FirstOrDefault(t => t.Name.Contains(className)) ?? throw new ArgumentException($"Class {className} not found in type {module.Name}");
@@ -43,15 +44,16 @@ namespace OBF.ILProcessing
 
             // Add the cloned method to the type
             type.Methods.Add(clonedMethod);
+
+            // Add the cloned method to the list
+            clonedMethods.Add(clonedMethod);
         }
         public static void RandomMethod(ModuleDefinition module)
         {
             Random random = new Random();
 
             // Select a random class
-            var types = module.Types
-                .Where(t => t.HasMethods && t.Methods.Any(m => m.Body != null /*&& !m.IsVirtual && !m.HasOverrides*/))
-                .ToList();
+            var types = module.Types.Where(t => t.HasMethods && t.Methods.Any(m => m.Body != null)).ToList();
 
             if (types.Count == 0)
             {
@@ -120,6 +122,9 @@ namespace OBF.ILProcessing
 
             // Add the cloned method to the target class
             targetType.Methods.Add(clonedMethod);
+
+            // Add the cloned method to the list
+            clonedMethods.Add(clonedMethod);
 
             Console.WriteLine($"Cloned method {randomMethod.Name} to {targetType.Name}");
         }

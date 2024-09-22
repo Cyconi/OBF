@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OBF.Algorithms;
+namespace OBF.Modules;
 
 internal class CodeInjection
 {
@@ -61,15 +61,15 @@ internal class CodeInjection
 
 
 
-        var types = new List<TypeDefinition>(assembly.MainModule.Types);
+        /*var types = new List<TypeDefinition>(assembly.MainModule.Types);*/
 
         /*for (int i = 0; i < 10; i++)
         {
             var encryptionClass = new TypeDefinition("Class"+i, Renaming.GenerateUniqueName() + i, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed, assembly.MainModule.TypeSystem.Object);
-            Generate.JunkClass(assembly, encryptionClass, Extensions.VarRng(3, i + 10), Extensions.VarRng(0, i + 6));            
+            Generate.JunkClass(assembly, encryptionClass, Extensions.IntRng(3, i + 10), Extensions.IntRng(0, i + 6));            
         }*/
 
-        foreach (TypeDefinition type in types)
+        /*foreach (TypeDefinition type in types)
         {
             Generate.JunkMethods(type); // Fixed :>
             Generate.JunkMethods(type);
@@ -85,6 +85,6 @@ internal class CodeInjection
             Clone.RandomMethod(assembly.MainModule);
             Clone.RandomMethod(assembly.MainModule);
             Clone.RandomMethod(assembly.MainModule);
-        }
+        }*/
     }
 }

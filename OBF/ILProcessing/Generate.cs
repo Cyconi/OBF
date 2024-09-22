@@ -5,36 +5,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OBF.Algorithms;
+using OBF.Modules;
 
 namespace OBF.ILProcessing
 {
     internal class Generate
     {
-        public static void JunkCode(MethodDefinition method)
-        {
-            if (method.Body == null)
-                return;
-
-            var ilProcessor = method.Body.GetILProcessor();
-            var instructions = method.Body.Instructions;
-
-            // Example: Injecting junk code
-            var junkInstruction1 = ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000)); // Load constant 1234
-            var junkInstruction2 = ilProcessor.Create(OpCodes.Pop); // Pop the value from the stack
-
-            // Insert junk instructions at the beginning of the method
-            ilProcessor.InsertBefore(instructions.First(), junkInstruction1);
-            ilProcessor.InsertAfter(junkInstruction1, junkInstruction2);
-        }
-
         public static void JunkMethods(TypeDefinition type)
         {
             if (!type.IsClass || type.IsEnum || type.IsInterface || type.IsDelegate() || type.IsCompilerGenerated())
                 return;
 
             var module = type.Module;
-            var paramType = module.GetSystemType((SystemType)Extensions.VarRng());
+            var paramType = module.GetSystemType((SystemType)Extensions.IntRng());
             var methodType = module.GetSystemType(Extensions.SysRng());
 
             // Create a new junk method
@@ -47,7 +30,7 @@ namespace OBF.ILProcessing
             junkMethod.Body.Variables.Add(resultVariable);
 
             // Generate random method calls
-            var randomMethodCount = Extensions.VarRng(1, 4); // Random number of method calls
+            var randomMethodCount = Extensions.IntRng(1, 4); // Random number of method calls
 
             var methods = new List<MethodDefinition>();
             var existingClasses = module.Types.Where(t => t.IsClass && !t.IsEnum && !t.IsInterface && !t.IsCompilerGenerated() && !t.IsDelegate() && t != type).ToList();
@@ -61,7 +44,7 @@ namespace OBF.ILProcessing
                 }
 
                 // Select a random existing class
-                var randomClass = existingClasses[Extensions.VarRng(0, existingClasses.Count)];
+                var randomClass = existingClasses[Extensions.IntRng(0, existingClasses.Count)];
 
                 // Create a new method in the selected class
                 var randomMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, methodType);
@@ -71,7 +54,7 @@ namespace OBF.ILProcessing
                 randomIlProcessor.Append(randomIlProcessor.Create(OpCodes.Ldarg_0)); // Load the parameter
 
                 // Randomly choose to add if-else or switch statement
-                var action = Extensions.VarRng(0, 6);
+                var action = Extensions.IntRng(0, 6);
                 switch (action)
                 {
                     case 0:
@@ -138,8 +121,8 @@ namespace OBF.ILProcessing
                 ilProcessor.Append(ilProcessor.Create(OpCodes.Call, methods[0])); // Call the root method
             }
 
-            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
-            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
+            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
+            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
             ilProcessor.Append(ilProcessor.Create(OpCodes.Add)); // Add the two constants
             ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
             ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
@@ -168,7 +151,7 @@ namespace OBF.ILProcessing
             junkMethod.Body.Variables.Add(resultVariable);
 
             // Generate random method calls
-            var randomMethodCount = Extensions.VarRng(1, 4); // Random number of method calls
+            var randomMethodCount = Extensions.IntRng(1, 4); // Random number of method calls
 
             var methods = new List<MethodDefinition>();
             var existingClasses = module.Types.Where(t => t.IsClass && !t.IsEnum && !t.IsInterface && !t.IsCompilerGenerated() && !t.IsDelegate() && t != type).ToList();
@@ -182,7 +165,7 @@ namespace OBF.ILProcessing
                 }
 
                 // Select a random existing class
-                var randomClass = existingClasses[Extensions.VarRng(0, existingClasses.Count)];
+                var randomClass = existingClasses[Extensions.IntRng(0, existingClasses.Count)];
 
                 // Create a new method in the selected class
                 var randomMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Virtual | MethodAttributes.HideBySig, voidType);
@@ -192,7 +175,7 @@ namespace OBF.ILProcessing
                 randomIlProcessor.Append(randomIlProcessor.Create(OpCodes.Ldarg_0)); // Load the parameter
 
                 // Randomly choose to add if-else or switch statement
-                var action = Extensions.VarRng(0, 6);
+                var action = Extensions.IntRng(0, 6);
                 switch (action)
                 {
                     case 0:
@@ -259,8 +242,8 @@ namespace OBF.ILProcessing
                 ilProcessor.Append(ilProcessor.Create(OpCodes.Call, methods[0])); // Call the root method
             }
 
-            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
-            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
+            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
+            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
             ilProcessor.Append(ilProcessor.Create(OpCodes.Add)); // Add the two constants
             ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
             ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
@@ -285,7 +268,7 @@ namespace OBF.ILProcessing
             // Add junk methods to the class
             for (int i = 0; i < methods; i++)
             {
-                var junkMethod = CreateJunkMethod(module, Renaming.GenerateUniqueName(), Extensions.VarRng(), Extensions.VarRng(), 0, Extensions.SysRng());
+                var junkMethod = CreateJunkMethod(module, Renaming.GenerateUniqueName(), Extensions.IntRng(), Extensions.IntRng(), 0, Extensions.SysRng());
                 type.Methods.Add(junkMethod);
             }
 
@@ -336,16 +319,16 @@ namespace OBF.ILProcessing
             }
             var resultVariable = new VariableDefinition(pType);
 
-            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 100))); // Load constant
-            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-100, 1000))); // Load constant
+            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 100))); // Load constant
+            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-100, 1000))); // Load constant
             ilProcessor.Append(ilProcessor.Create(OpCodes.Add)); // Add the two constants
             ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
             ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
             ilProcessor.Append(ilProcessor.Create(OpCodes.Ret)); // Return the value
 
             // Add some junk instructions
-            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-100, 1000))); // Load constant
-            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 100))); // Load constant 
+            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-100, 1000))); // Load constant
+            ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 100))); // Load constant 
             ilProcessor.Append(ilProcessor.Create(OpCodes.Rem)); // Remainder of the two constants
             ilProcessor.Append(ilProcessor.Create(OpCodes.Pop)); // Pop the result from the stack
             ilProcessor.GetReturnType(methodType);

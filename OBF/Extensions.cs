@@ -1,6 +1,6 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
-using OBF.Algorithms;
+using OBF.Modules;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -156,7 +156,7 @@ public static class Extensions
         Random random = new();
         return (SystemType)random.Next(startRange, endRange);
     }
-    internal static int VarRng(int startRange = 0, int endRange = 4)
+    internal static int IntRng(int startRange = 0, int endRange = 4)
     {
         Random random = new();
         return random.Next(startRange, endRange);

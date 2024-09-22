@@ -1,6 +1,6 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
-using OBF.Algorithms;
+using OBF.Modules;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +15,7 @@ namespace OBF.ILProcessing
         {
             var ilProcessor = method.Body.GetILProcessor();
             var endIf = ilProcessor.Create(OpCodes.Nop);
-            var rng = Extensions.VarRng(-100, 100);
+            var rng = Extensions.IntRng(-100, 100);
 
             ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0)); // Load the parameter
             ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4, rng)); // Load constant 0
@@ -35,7 +35,7 @@ namespace OBF.ILProcessing
             var switchEnd = ilProcessor.Create(OpCodes.Nop);
             var case1 = ilProcessor.Create(OpCodes.Nop);
             var case2 = ilProcessor.Create(OpCodes.Nop);
-            var rng = Extensions.VarRng(-100, 100);
+            var rng = Extensions.IntRng(-100, 100);
 
             ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0)); // Load the parameter
             ilProcessor.Append(ilProcessor.Create(OpCodes.Switch, new Instruction[] { case1, case2 })); // Switch statement
@@ -75,36 +75,59 @@ namespace OBF.ILProcessing
             if (firstInstruction == null)
                 return;
 
-            var endIf = ilProcessor.Create(OpCodes.Nop);
+            var endIf1 = ilProcessor.Create(OpCodes.Nop);
+            var endIf2 = ilProcessor.Create(OpCodes.Nop);
+            var endIf3 = ilProcessor.Create(OpCodes.Nop);
 
-            // Create a junk method
-            var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, method.Module.TypeSystem.Void);
+            // Create junk methods
+            var junkMethod1 = CreateJunkMethod(type, method.Module);
+            var junkMethod2 = CreateJunkMethod(type, method.Module);
+            var junkMethod3 = CreateJunkMethod(type, method.Module);
+
+            // Insert dummy if-else logic with conditions
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4_1)); // Load constant 1
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Brtrue_S, endIf1)); // Branch to endIf1 if true
+
+            // If block 1
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod1)); // Call junk method 1
+            ilProcessor.InsertBefore(firstInstruction, endIf1); // End if 1
+
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4_1)); // Load constant 1
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Brtrue_S, endIf2)); // Branch to endIf2 if true
+
+            // If block 2
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod2)); // Call junk method 2
+            ilProcessor.InsertBefore(firstInstruction, endIf2); // End if 2
+
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4_1)); // Load constant 1
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Brtrue_S, endIf3)); // Branch to endIf3 if true
+
+            // If block 3
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod3)); // Call junk method 3
+            ilProcessor.InsertBefore(firstInstruction, endIf3); // End if 3
+
+            // Log to the console
+            Console.WriteLine($"Injected nested if-else obfuscation into method: {type.Name}.{method.Name}");
+        }
+        private static MethodDefinition CreateJunkMethod(TypeDefinition type, ModuleDefinition module)
+        {
+            var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, module.TypeSystem.Void);
             type.Methods.Add(junkMethod);
             var junkIlProcessor = junkMethod.Body.GetILProcessor();
 
             // Fill the junk method with random junk code
-            var intType = method.Module.TypeSystem.Int32;
+            var intType = module.TypeSystem.Int32;
             var resultVariable = new VariableDefinition(intType);
             junkMethod.Body.Variables.Add(resultVariable);
-            
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
+
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
             junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Add)); // Add the two constants
             junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
             junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
             junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ret)); // Return the value
-            
-            // Insert dummy if-else logic with a condition that is always false
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4_1)); // Load constant 0 (!true)
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Brtrue_S, endIf)); // Branch to endIf if true (which it never is)
 
-            // If block
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod)); // Call junk method
-
-            ilProcessor.InsertBefore(firstInstruction, endIf); // End if
-
-            // Log to the console
-            Console.WriteLine($"Injected if-else obfuscation into method: {type.Name}.{method.Name}");
+            return junkMethod;
         }
         public static void AddSwitchWithMethod(MethodDefinition method, TypeDefinition type)
         {
@@ -131,8 +154,8 @@ namespace OBF.ILProcessing
             var resultVariable = new VariableDefinition(intType);
             junkMethod.Body.Variables.Add(resultVariable);
 
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.VarRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
             junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Add)); // Add the two constants
             junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
             junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
@@ -163,6 +186,120 @@ namespace OBF.ILProcessing
 
             // Log to the console
             Console.WriteLine($"Injected switch obfuscation into method: {type.Name}.{method.Name}");
+        }
+        public static void AddIfOpaquePredicates(MethodDefinition method, TypeDefinition type)
+        {
+            if (!method.HasBody)
+                return;
+
+            var ilProcessor = method.Body.GetILProcessor();
+            var firstInstruction = method.Body.Instructions.FirstOrDefault();
+            if (firstInstruction == null)
+                return;
+
+            var label1 = ilProcessor.Create(OpCodes.Nop);
+            var label2 = ilProcessor.Create(OpCodes.Nop);
+            var endLabel = ilProcessor.Create(OpCodes.Nop);
+
+            // Define a local variable
+            var intType = method.Module.TypeSystem.Int32;
+            var localVariable = new VariableDefinition(intType);
+            method.Body.Variables.Add(localVariable);
+
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, label1));
+
+            ilProcessor.InsertBefore(firstInstruction, label1);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, 110));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Stloc, localVariable));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldloc, localVariable));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, 60));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Blt, label2));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, endLabel));
+
+            ilProcessor.InsertBefore(firstInstruction, label2);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Nop)); // Placeholder for additional logic
+
+            ilProcessor.InsertBefore(firstInstruction, endLabel);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Nop)); // End of method
+
+            Console.WriteLine($"Injected goto obfuscation into method: {type.Name}.{method.Name}");
+        }
+        public static void AddDoWhileOpaquePredicates(MethodDefinition method, TypeDefinition type)
+        {
+            if (!method.HasBody)
+                return;
+
+            var ilProcessor = method.Body.GetILProcessor();
+            var firstInstruction = method.Body.Instructions.FirstOrDefault();
+            if (firstInstruction == null)
+                return;
+
+            var label1 = ilProcessor.Create(OpCodes.Nop);
+            var endLabel = ilProcessor.Create(OpCodes.Nop);
+
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, label1));
+
+            ilProcessor.InsertBefore(firstInstruction, label1);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, 100));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Stloc_0));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldloc_0));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, 50));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Blt, endLabel));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Nop)); // End of method
+
+            Console.WriteLine($"Injected goto obfuscation into method: {type.Name}.{method.Name}");
+        }
+        public static void AddDoWhile(MethodDefinition method, TypeDefinition type)
+        {
+            if (!method.HasBody)
+                return;
+
+            var ilProcessor = method.Body.GetILProcessor();
+            var firstInstruction = method.Body.Instructions.FirstOrDefault();
+            if (firstInstruction == null)
+                return;
+
+            var label1 = ilProcessor.Create(OpCodes.Nop);
+            var label2 = ilProcessor.Create(OpCodes.Nop);
+            var label3 = ilProcessor.Create(OpCodes.Nop);
+            var endIf = ilProcessor.Create(OpCodes.Nop);
+
+            // Create a junk method
+            var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, method.Module.TypeSystem.Void);
+            type.Methods.Add(junkMethod);
+            var junkIlProcessor = junkMethod.Body.GetILProcessor();
+
+            // Fill the junk method with random junk code
+            var intType = method.Module.TypeSystem.Int32;
+            var resultVariable = new VariableDefinition(intType);
+            junkMethod.Body.Variables.Add(resultVariable);
+
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Add)); // Add the two constants
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ret)); // Return the value
+
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, label1));
+
+            ilProcessor.InsertBefore(firstInstruction, label1);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, 100));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Stloc_0));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Br, label2));
+
+            ilProcessor.InsertBefore(firstInstruction, label2);
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldloc_0));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, 50));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Blt, label3));
+
+            // If block
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, junkMethod)); // Call junk method
+
+            ilProcessor.InsertBefore(firstInstruction, endIf); // End if
+
+            // Log to the console
+            Console.WriteLine($"Injected do-while obfuscation into method: {type.Name}.{method.Name}");
         }
         public static void AddMethodCall(MethodDefinition method, TypeDefinition type)
         {

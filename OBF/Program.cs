@@ -1,7 +1,8 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
-using OBF.Algorithms;
+using OBF.Modules;
 using OBF.ILProcessing;
+using OBF.Modules;
 
 namespace OBF;
 
@@ -38,13 +39,15 @@ internal class Program
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
         Renaming.OriginalAssembly = assembly;
 
-        StringEncryption.AddDecryptionMethod(assembly);  // bruh
-        //EmbeddedStringEncryption.InjectClass(assembly);
-        StringEncryption.EncryptStrings(assembly); // bruhg
+        //StringEncryption.AddDecryptionMethod(assembly);  // kinda works
+
+        //StringEncryption.EncryptStrings(assembly); // maybe?
 
         //CodeInjection.InjectCode(assembly); // works, want to add class injection
 
         //Renaming.RenameAssembly(assembly); // works, not sure i can do much more
+
+        //ControlFlow.CtrlFlow(assembly); // need work
 
 
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
