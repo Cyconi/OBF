@@ -32,6 +32,7 @@ public enum SystemType
 }
 public static class Extensions
 {
+    private static readonly Random random = new();
     public static TypeReference GetSystemType(this ModuleDefinition module, SystemType field)
     {
         return field switch
@@ -151,22 +152,12 @@ public static class Extensions
                 break;
         }
     }
-    internal static SystemType SysRng(int startRange = 0, int endRange = 7)
-    {
-        Random random = new();
-        return (SystemType)random.Next(startRange, endRange);
-    }
-    internal static int IntRng(int startRange = 0, int endRange = 4)
-    {
-        Random random = new();
-        return random.Next(startRange, endRange);
-    }
-    public static bool IsDelegate(this TypeDefinition type)
-    {
-        return type.BaseType != null && type.BaseType.FullName.Contains("MulticastDelegate");
-    }
-    public static bool IsCompilerGenerated(this TypeDefinition type)
-    {
-        return type.Name.Contains('<') || type.Name.Contains('>');
-    }
+    internal static SystemType SysRng(int startRange = 0, int endRange = 7) => (SystemType)random.Next(startRange, endRange);
+    
+    internal static int IntRng(int startRange = 0, int endRange = 4) => random.Next(startRange, endRange);
+    
+    public static bool IsDelegate(this TypeDefinition type) => type.BaseType != null && type.BaseType.FullName.Contains("MulticastDelegate");
+    
+    public static bool IsCompilerGenerated(this TypeDefinition type) => type.Name.Contains('<') || type.Name.Contains('>');
+
 }
