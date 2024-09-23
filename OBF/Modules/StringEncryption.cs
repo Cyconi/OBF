@@ -93,14 +93,12 @@ public static class StringEncryption
 
         module.Types.Add(encryptionClass);
     }
-
     private static TypeDefinition CreateEncryptionClass(ModuleDefinition module)
     {
         return new TypeDefinition("Embed", "EmbeddedStringEncryption",
             TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed,
             module.TypeSystem.Object);
     }
-
     private static MethodDefinition CreateOnDecryptMethod(ModuleDefinition module)
     {
         var method = new MethodDefinition("OnDecrypt",
@@ -147,7 +145,6 @@ public static class StringEncryption
 
         return method;
     }
-
     private static MethodDefinition CreateDecryptStringMethod(ModuleDefinition module, MethodReference onDecryptMethod)
     {
         var method = new MethodDefinition("DecryptString",
@@ -185,8 +182,6 @@ public static class StringEncryption
 
         return method;
     }
-
-
     public static void EncryptStrings(AssemblyDefinition assembly)
     {
         Console.WriteLine("Starting string encryption...");
@@ -207,12 +202,22 @@ public static class StringEncryption
                     .First(t => t.Name == "EmbeddedStringEncryption")
                     .Methods.First(m => m.Name == "DecryptString");
 
+                var processedInstructions = new HashSet<Instruction>();
+
                 for (int i = 0; i < method.Body.Instructions.Count; i++)
                 {
                     var instruction = method.Body.Instructions[i];
-                    if (instruction.OpCode == OpCodes.Ldstr)
+                    if (instruction.OpCode == OpCodes.Ldstr && !processedInstructions.Contains(instruction))
                     {
                         string originalString = (string)instruction.Operand;
+
+                        // Skip interpolated strings
+                        if (originalString.Contains('{') || originalString.Contains('}') || string.IsNullOrWhiteSpace(originalString))
+                        {
+                            Console.WriteLine($"Skipping interpolated string: {originalString}");
+                            continue;
+                        }
+
                         Console.WriteLine($"Encrypting string: {originalString}");
 
                         byte[] originalBytes = Encoding.UTF8.GetBytes(originalString);
@@ -231,14 +236,20 @@ public static class StringEncryption
                         };
 
                         // Replace the original instruction with the new instructions
-                        ilProcessor.Replace(instruction, newInstructions[0]);
-                        for (int j = 1; j < newInstructions.Count; j++)
+                        if (encryptedString != null && keyString != null && ivString != null)
                         {
-                            ilProcessor.InsertAfter(newInstructions[j - 1], newInstructions[j]);
-                        }
+                            ilProcessor.Replace(instruction, newInstructions[0]);
+                            for (int j = 1; j < newInstructions.Count; j++)
+                                ilProcessor.InsertAfter(newInstructions[j - 1], newInstructions[j]);
 
-                        Console.WriteLine("String encrypted and decryption call inserted.");
-                        break; // Exit the loop after processing the string
+                            foreach (var instr in newInstructions)
+                                processedInstructions.Add(instr);
+
+                            Console.WriteLine($"String encrypted and decryption call inserted in {type.Name} | {method.Name}");
+                        }
+                        else
+                            Console.WriteLine($"\n\nError replacing instructions: encryptedString: {encryptedString} keyString: {keyString} ivString: {ivString}\n\n");
+                        
                     }
                 }
             }
@@ -246,7 +257,6 @@ public static class StringEncryption
 
         Console.WriteLine("String encryption completed.");
     }
-
     public static (byte[], byte[], byte[]) OnEncrypt(byte[] by)
     {
         using Aes aes = Aes.Create();

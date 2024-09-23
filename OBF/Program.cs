@@ -3,6 +3,9 @@ using Mono.Cecil.Cil;
 using OBF.Modules;
 using OBF.ILProcessing;
 using OBF.Modules;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Collections.Generic;
+using System.Runtime.ConstrainedExecution;
 
 namespace OBF;
 
@@ -39,18 +42,19 @@ internal class Program
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
         Renaming.OriginalAssembly = assembly;
 
+        //AntiDebug.InitAntiDebug(assembly);
+
         //StringEncryption.AddDecryptionMethod(assembly);  // kinda works
 
         //StringEncryption.EncryptStrings(assembly); // maybe?
 
-        //CodeInjection.InjectCode(assembly); // works, want to add class injection
+        CodeInjection.InjectCode(assembly); // works, want to add class injection
 
-        //Renaming.RenameAssembly(assembly); // works, not sure i can do much more
+        ControlFlow.CtrlFlow(assembly); // need work
 
-        //ControlFlow.CtrlFlow(assembly); // need work
+        Renaming.RenameAssembly(assembly); // works, not sure i can do much more
 
-
-        string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
+        string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory).FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
         string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Hexed\Settings\UnityLoader\VRChat\Cheats\" + Path.GetFileName(newDllPath);
 
         assembly.Write(newDllPath);
@@ -63,3 +67,4 @@ internal class Program
         Console.ReadKey();
     }
 }
+

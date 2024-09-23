@@ -14,9 +14,9 @@ namespace OBF.ILProcessing
         public static List<MethodDefinition> clonedMethods = new List<MethodDefinition>();
         public static void MethodbyName(ModuleDefinition module, string className, string methodName)
         {
-            var type = module.Types.FirstOrDefault(t => t.Name.Contains(className)) ?? throw new ArgumentException($"Class {className} not found in type {module.Name}");
+            var type = module.Types.FirstOrDefault(t => t.Name.Contains(className)) ?? throw new ArgumentException($"[CodeInjection] Class {className} not found in type {module.Name}");
             // Find the method to clone
-            var methodToClone = type.Methods.FirstOrDefault(m => m.Name.Contains(methodName)) ?? throw new ArgumentException($"Method {methodName} not found in type {type.Name}");
+            var methodToClone = type.Methods.FirstOrDefault(m => m.Name.Contains(methodName)) ?? throw new ArgumentException($"[CodeInjection] Method {methodName} not found in type {type.Name}");
 
             // Create a new method definition
             var clonedMethod = new MethodDefinition(methodToClone.Name + "_Clone",
@@ -57,8 +57,8 @@ namespace OBF.ILProcessing
 
             if (types.Count == 0)
             {
-                Console.WriteLine("No classes with suitable methods found in the module.");
-                throw new ArgumentException("No classes with methods found in the module.");
+                Console.WriteLine("[CodeInjection] No classes with suitable methods found in the module.");
+                throw new ArgumentException("[CodeInjection] No classes with methods found in the module.");
             }
 
             MethodDefinition? randomMethod = null;
@@ -80,16 +80,16 @@ namespace OBF.ILProcessing
 
             if (randomMethod == null)
             {
-                Console.WriteLine("Failed to find a suitable method to clone.");
-                throw new InvalidOperationException("Failed to find a suitable method to clone.");
+                Console.WriteLine("[CodeInjection] Failed to find a suitable method to clone.");
+                throw new InvalidOperationException("[CodeInjection] Failed to find a suitable method to clone.");
             }
 
             // Select a random target class to clone the method to
             var targetTypes = types.Where(t => t.IsClass && !t.IsEnum && !t.IsInterface && !t.IsCompilerGenerated() && !t.IsDelegate()).ToList();
             if (targetTypes.Count == 0)
             {
-                Console.WriteLine("No suitable target classes found.");
-                throw new InvalidOperationException("No suitable target classes found.");
+                Console.WriteLine("[CodeInjection] No suitable target classes found.");
+                throw new InvalidOperationException("[CodeInjection] No suitable target classes found.");
             }
 
             var targetType = targetTypes[random.Next(targetTypes.Count)];
@@ -126,7 +126,7 @@ namespace OBF.ILProcessing
             // Add the cloned method to the list
             clonedMethods.Add(clonedMethod);
 
-            Console.WriteLine($"Cloned method {randomMethod.Name} to {targetType.Name}");
+            Console.WriteLine($"[CodeInjection] Cloned method {randomMethod.Name} to {targetType.Name}");
         }
     }
 }

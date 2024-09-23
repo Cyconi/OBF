@@ -39,7 +39,7 @@ namespace OBF.ILProcessing
             {
                 if (existingClasses.Count == 0)
                 {
-                    Console.WriteLine("No suitable classes found for injecting junk methods.");
+                    Console.WriteLine("[CodeInjection] No suitable classes found for injecting junk methods.");
                     return;
                 }
 
@@ -59,34 +59,21 @@ namespace OBF.ILProcessing
                 {
                     case 0:
                         Statements.AddIfElse(randomMethod);
-                        Statements.AddIfElse(randomMethod);
                         break;
                     case 1:
-                        Statements.AddSwitch(randomMethod);
                         Statements.AddSwitch(randomMethod);
                         break;
                     case 2:
                         Statements.AddIfElse(randomMethod);
                         Statements.AddIfElse(randomMethod);
-                        Statements.AddSwitch(randomMethod);
                         break;
                     case 3:
                         Statements.AddSwitch(randomMethod);
-                        Statements.AddSwitch(randomMethod);
-                        Statements.AddIfElse(randomMethod);
-                        break;
-                    case 4:
-                        Statements.AddSwitch(randomMethod);
-                        Statements.AddIfElse(randomMethod);
-                        break;
-                    case 5:
-                        Statements.AddIfElse(randomMethod);
                         Statements.AddSwitch(randomMethod);
                         break;
                     default:
                         Statements.AddIfElse(randomMethod);                        
                         Statements.AddSwitch(randomMethod);
-                        Statements.AddIfElse(randomMethod);
                         break;
                 }
 
@@ -130,7 +117,7 @@ namespace OBF.ILProcessing
 
             // Add the junk method to the type
             type.Methods.Add(junkMethod);
-            Console.WriteLine($"Added junk method {junkMethod.Name} to class {type.Name}");
+            Console.WriteLine($"[CodeInjection] Added junk method {junkMethod.Name} to class {type.Name}");
         }
         public static void JunkVirtualMethods(TypeDefinition type)
         {
@@ -160,7 +147,7 @@ namespace OBF.ILProcessing
             {
                 if (existingClasses.Count == 0)
                 {
-                    Console.WriteLine("No suitable classes found for injecting junk methods.");
+                    Console.WriteLine("[CodeInjection] No suitable classes found for injecting junk methods.");
                     return;
                 }
 
@@ -251,7 +238,7 @@ namespace OBF.ILProcessing
 
             // Add the junk method to the type
             type.Methods.Add(junkMethod);
-            Console.WriteLine($"Added junk method {junkMethod.Name} to class {type.Name}");
+            Console.WriteLine($"[CodeInjection] Added junk method {junkMethod.Name} to class {type.Name}");
         }
 
         public static void JunkClass(AssemblyDefinition assembly, TypeDefinition type, int methods = 5, int fields = 3)
