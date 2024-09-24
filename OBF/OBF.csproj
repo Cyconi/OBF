@@ -11,4 +11,10 @@
     <PackageReference Include="Mono.Cecil" Version="0.11.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="CoreRuntime">
+      <HintPath>bin\Debug\OBF\CoreRuntime.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

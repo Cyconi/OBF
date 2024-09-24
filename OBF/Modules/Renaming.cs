@@ -1,4 +1,5 @@
-﻿using Mono.Cecil;
+﻿using CoreRuntime.Interfaces;
+using Mono.Cecil;
 using Mono.Cecil.Cil;
 using System;
 using System.Collections.Generic;
@@ -72,23 +73,28 @@ public static class Renaming
         foreach (var module in assembly.Modules)
             foreach (var type in module.Types)
                 if (!string.IsNullOrEmpty(type.Namespace))
-                    type.Namespace = GenerateUniqueName(type.Namespace);
-        
+                    type.Namespace = GenerateUniqueName(type.Namespace);        
 
         foreach (TypeDefinition type in assembly.MainModule.Types)
         {
-            if ((type.Name.Equals("AppStart") || type.Name.Equals("Client")) && type.IsPublic)
+            if ((type.Name.Equals("AppStart") || type.Name.Equals("Client") || type.Name.Equals("AvatarObject")) && type.IsPublic)
                 type.Name = GenerateUniqueName(type.Name);
 
             if (type.IsEnum || type.IsPublic)
                 continue;
 
-            type.Name = GenerateUniqueName(type.Name);
+            //type.CustomAttributes.Clear();
+            //type.Name = GenerateUniqueName(type.Name);
 
             foreach (MethodDefinition method in type.Methods)
             {
+                if (method.FullName.Contains("IEnumerator"))
+                    method.CustomAttributes.Clear();
+
                 if (!method.HasBody || method.IsVirtual || method.DeclaringType != type)
                     continue;
+
+                method.CustomAttributes.Clear();
 
                 if (!method.IsConstructor && !method.IsSpecialName)
                     method.Name = GenerateUniqueName(method.Name);
@@ -105,20 +111,30 @@ public static class Renaming
                 if (property.IsSpecialName || property.DeclaringType != type)
                     continue;
 
+                property.CustomAttributes.Clear();
                 property.Name = GenerateUniqueName(property.Name);
 
                 if (property.GetMethod != null && property.GetMethod.DeclaringType == type)
+                {
+                    property.GetMethod.CustomAttributes.Clear();
                     property.GetMethod.Name = GenerateUniqueName(property.GetMethod.Name);
+                }
 
                 if (property.SetMethod != null && property.SetMethod.DeclaringType == type)
+                {
+                    property.SetMethod.CustomAttributes.Clear();
                     property.SetMethod.Name = GenerateUniqueName(property.SetMethod.Name);
+                } 
             }
 
             foreach (FieldDefinition field in type.Fields)
                 if (!field.HasCustomAttributes && field.DeclaringType == type)
+                {
+                    field.CustomAttributes.Clear();
                     field.Name = GenerateUniqueName(field.Name);
+                }
         }
-        UpdateReferences(assembly);
+        //UpdateReferences(assembly);
         ValidateChanges(assembly);
     }
     private static void ClearMetadata(AssemblyDefinition assembly)
@@ -136,24 +152,64 @@ public static class Renaming
     }
     private static void UpdateReferences(AssemblyDefinition assembly)
     {
-        foreach (var module in assembly.Modules)        
-            foreach (var type in module.Types)            
-                foreach (var method in type.Methods)                
-                    foreach (var instruction in method.Body.Instructions)                    
+        foreach (var module in assembly.Modules)
+        {
+            foreach (var type in module.Types)
+            {
+                foreach (var method in type.Methods)
+                {
+                    if (method.Body == null || method.Body.Instructions == null)
+                        continue;
+
+                    foreach (var instruction in method.Body.Instructions)
+                    {
                         if (instruction.Operand is MethodReference methodRef)
-                            methodRef.Name = GenerateUniqueName(methodRef.Name);
-                        else if (instruction.Operand is FieldReference fieldRef)                        
-                            fieldRef.Name = GenerateUniqueName(fieldRef.Name);                        
-                        else if (instruction.Operand is TypeReference typeRef)                        
-                            typeRef.Name = GenerateUniqueName(typeRef.Name); 
+                        {
+                            // Ensure the method reference is resolved before renaming
+                            if (methodRef.Resolve() != null)
+                            {
+                                // Skip renaming MethodSpecification
+                                if (methodRef is MethodSpecification)
+                                    continue;
+
+                                methodRef.Name = GenerateUniqueName(methodRef.Name);
+                            }
+                        }
+                        else if (instruction.Operand is FieldReference fieldRef)
+                        {
+                            // Ensure the field reference is resolved before renaming
+                            if (fieldRef.Resolve() != null)
+                            {
+                                fieldRef.Name = GenerateUniqueName(fieldRef.Name);
+                            }
+                        }
+                        else if (instruction.Operand is TypeReference typeRef)
+                        {
+                            // Ensure the type reference is resolved before renaming
+                            if (typeRef.Resolve() != null)
+                            {
+                                // Skip renaming TypeSpecification
+                                if (typeRef is TypeSpecification)
+                                    continue;
+
+                                typeRef.Name = GenerateUniqueName(typeRef.Name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
+
+
     private static void ValidateChanges(AssemblyDefinition assembly)
     {
         foreach (var module in assembly.Modules)
         {
             foreach (var type in module.Types)
             {
-                if (string.IsNullOrEmpty(type.Name) || string.IsNullOrEmpty(type.Namespace))
+                if (string.IsNullOrEmpty(type.Name))
                     throw new InvalidOperationException("Type originalName or namespace cannot be empty.");
 
                 foreach (var method in type.Methods)
@@ -171,7 +227,7 @@ public static class Renaming
         }
     }
 
-    static Dictionary<string, string> nameMap = new Dictionary<string, string>();
+    static Dictionary<string, string> nameMap = new();
     public static string GenerateUniqueName() => GenerateUniqueName("Unnamed");
     private static string GenerateUniqueName(string originalName)
     {
