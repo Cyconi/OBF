@@ -36,7 +36,7 @@ public static class StringEncryption
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ldloc_0));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetMethod("CreateDecryptor", Type.EmptyTypes))));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ldc_I4_1));
-        ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Newobj, module.ImportReference(typeof(CryptoStream).GetConstructor(new[] { typeof(Stream), typeof(ICryptoTransform), typeof(CryptoStreamMode) }))));
+        ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Newobj, module.ImportReference(typeof(CryptoStream).GetConstructor([typeof(Stream), typeof(ICryptoTransform), typeof(CryptoStreamMode)]))));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Stloc_2));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ldloc_2));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ldarg_0));
@@ -44,7 +44,7 @@ public static class StringEncryption
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ldarg_0));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ldlen));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Conv_I4));
-        ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("Write", new[] { typeof(byte[]), typeof(int), typeof(int) }))));
+        ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("Write", [typeof(byte[]), typeof(int), typeof(int)]))));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ldloc_2));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("FlushFinalBlock", Type.EmptyTypes))));
         ilProcessorOnDecrypt.Append(ilProcessorOnDecrypt.Create(OpCodes.Ldloc_1));
@@ -60,13 +60,13 @@ public static class StringEncryption
         ilProcessor.Body.Variables.Add(new VariableDefinition(module.TypeSystem.Byte.MakeArrayType()));
         ilProcessor.Body.Variables.Add(new VariableDefinition(module.TypeSystem.Byte.MakeArrayType()));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", [typeof(string)]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_1));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", [typeof(string)]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_1));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_2));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", [typeof(string)]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_2));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_1));
@@ -76,7 +76,7 @@ public static class StringEncryption
         var onDecryptMethod = module.ImportReference(onDecryptMethodDef);
         ilProcessor.Append(ilProcessor.Create(OpCodes.Call, onDecryptMethod));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Encoding).GetProperty("UTF8").GetGetMethod())));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Encoding).GetMethod("GetString", new[] { typeof(byte[]) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Encoding).GetMethod("GetString", [typeof(byte[])]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ret));
         
     }
@@ -128,7 +128,7 @@ public static class StringEncryption
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetMethod("CreateDecryptor", Type.EmptyTypes))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldc_I4_1));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Newobj, module.ImportReference(typeof(CryptoStream).GetConstructor(new[] { typeof(Stream), typeof(ICryptoTransform), typeof(CryptoStreamMode) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Newobj, module.ImportReference(typeof(CryptoStream).GetConstructor([typeof(Stream), typeof(ICryptoTransform), typeof(CryptoStreamMode)]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_2));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_2));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
@@ -136,7 +136,7 @@ public static class StringEncryption
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldlen));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Conv_I4));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("Write", new[] { typeof(byte[]), typeof(int), typeof(int) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("Write", [typeof(byte[]), typeof(int), typeof(int)]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_2));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("FlushFinalBlock", Type.EmptyTypes))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_1));
@@ -162,13 +162,13 @@ public static class StringEncryption
         ilProcessor.Body.Variables.Add(new VariableDefinition(module.TypeSystem.Byte.MakeArrayType()));
 
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", [typeof(string)]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_1));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", [typeof(string)]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_1));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_2));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", new[] { typeof(string) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Convert).GetMethod("FromBase64String", [typeof(string)]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_2));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_1));
@@ -177,7 +177,7 @@ public static class StringEncryption
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_3));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Encoding).GetProperty("UTF8").GetGetMethod())));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_3));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Encoding).GetMethod("GetString", new[] { typeof(byte[]) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Encoding).GetMethod("GetString", [typeof(byte[])]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ret));
 
         return method;
@@ -188,75 +188,91 @@ public static class StringEncryption
 
         foreach (TypeDefinition type in assembly.MainModule.Types)
         {
-            Console.WriteLine($"Processing type: {type.Name}");
-
-            foreach (MethodDefinition method in type.Methods)
-            {
-                if (method.Body == null)
-                    continue;
-
-                Console.WriteLine($"Processing method: {method.Name}");
-
-                var ilProcessor = method.Body.GetILProcessor();
-                var decryptMethod = assembly.MainModule.Types
-                    .First(t => t.Name == "EmbeddedStringEncryption")
-                    .Methods.First(m => m.Name == "DecryptString");
-
-                var processedInstructions = new HashSet<Instruction>();
-
-                for (int i = 0; i < method.Body.Instructions.Count; i++)
-                {
-                    var instruction = method.Body.Instructions[i];
-                    if (instruction.OpCode == OpCodes.Ldstr && !processedInstructions.Contains(instruction))
-                    {
-                        string originalString = (string)instruction.Operand;
-
-                        // Skip interpolated strings
-                        if (originalString.Contains('{') || originalString.Contains('}') || string.IsNullOrWhiteSpace(originalString))
-                        {
-                            Console.WriteLine($"Skipping interpolated string: {originalString}");
-                            continue;
-                        }
-
-                        Console.WriteLine($"Encrypting string: {originalString}");
-
-                        byte[] originalBytes = Encoding.UTF8.GetBytes(originalString);
-                        var (encryptedBytes, key, iv) = OnEncrypt(originalBytes);
-                        string encryptedString = Convert.ToBase64String(encryptedBytes);
-                        string keyString = Convert.ToBase64String(key);
-                        string ivString = Convert.ToBase64String(iv);
-
-                        // Create new instructions
-                        var newInstructions = new List<Instruction>
-                        {
-                            ilProcessor.Create(OpCodes.Ldstr, encryptedString),
-                            ilProcessor.Create(OpCodes.Ldstr, keyString),
-                            ilProcessor.Create(OpCodes.Ldstr, ivString),
-                            ilProcessor.Create(OpCodes.Call, assembly.MainModule.ImportReference(decryptMethod))
-                        };
-
-                        // Replace the original instruction with the new instructions
-                        if (encryptedString != null && keyString != null && ivString != null)
-                        {
-                            ilProcessor.Replace(instruction, newInstructions[0]);
-                            for (int j = 1; j < newInstructions.Count; j++)
-                                ilProcessor.InsertAfter(newInstructions[j - 1], newInstructions[j]);
-
-                            foreach (var instr in newInstructions)
-                                processedInstructions.Add(instr);
-
-                            Console.WriteLine($"String encrypted and decryption call inserted in {type.Name} | {method.Name}");
-                        }
-                        else
-                            Console.WriteLine($"\n\nError replacing instructions: encryptedString: {encryptedString} keyString: {keyString} ivString: {ivString}\n\n");
-                        
-                    }
-                }
-            }
+            ProcessType(type);
         }
 
         Console.WriteLine("String encryption completed.");
     }
+
+    private static void ProcessType(TypeDefinition type)
+    {
+        Console.WriteLine($"Processing type: {type.Name}");
+
+        foreach (MethodDefinition method in type.Methods)
+        {
+            if (method.Body == null)
+            {
+                Console.WriteLine($"Skipping method with no body: {method.Name}");
+                continue;
+            }
+
+            Console.WriteLine($"Processing method: {method.Name}");
+
+            var ilProcessor = method.Body.GetILProcessor();
+            var decryptMethod = type.Module.Types
+                .First(t => t.Name == "EmbeddedStringEncryption")
+                .Methods.First(m => m.Name == "DecryptString");
+
+            var processedInstructions = new HashSet<Instruction>();
+
+            for (int i = 0; i < method.Body.Instructions.Count; i++)
+            {
+                var instruction = method.Body.Instructions[i];
+                Console.WriteLine($"{instruction.OpCode.Name} {instruction.Operand}");
+
+                if (instruction.OpCode == OpCodes.Ldstr && !processedInstructions.Contains(instruction))
+                {
+                    string originalString = (string)instruction.Operand;
+
+                    // Skip interpolated strings
+                    if (originalString.Contains('{') || originalString.Contains('}') || string.IsNullOrWhiteSpace(originalString))
+                    {
+                        Console.WriteLine($"Skipping string: {originalString}");
+                        continue;
+                    }
+
+                    Console.WriteLine($"Encrypting string: {originalString}");
+
+                    byte[] originalBytes = Encoding.UTF8.GetBytes(originalString);
+                    var (encryptedBytes, key, iv) = OnEncrypt(originalBytes);
+                    string encryptedString = Convert.ToBase64String(encryptedBytes);
+                    string keyString = Convert.ToBase64String(key);
+                    string ivString = Convert.ToBase64String(iv);
+
+                    // Create new instructions
+                    var newInstructions = new List<Instruction>
+                    {
+                        ilProcessor.Create(OpCodes.Ldstr, encryptedString),
+                        ilProcessor.Create(OpCodes.Ldstr, keyString),
+                        ilProcessor.Create(OpCodes.Ldstr, ivString),
+                        ilProcessor.Create(OpCodes.Call, type.Module.ImportReference(decryptMethod))
+                    };
+
+                    // Replace the original instruction with the new instructions
+                    if (encryptedString != null && keyString != null && ivString != null)
+                    {
+                        ilProcessor.Replace(instruction, newInstructions[0]);
+                        for (int j = 1; j < newInstructions.Count; j++)
+                            ilProcessor.InsertAfter(newInstructions[j - 1], newInstructions[j]);
+
+                        foreach (var instr in newInstructions)
+                            processedInstructions.Add(instr);
+
+                        Console.WriteLine($"String encrypted and decryption call inserted in {type.Name} | {method.Name}");
+                    }
+                    else
+                        Console.WriteLine($"\n\nError replacing instructions: encryptedString: {encryptedString} keyString: {keyString} ivString: {ivString}\n\n");
+                }
+            }
+        }
+
+        // Process nested types (state machines for async methods)
+        foreach (var nestedType in type.NestedTypes)
+        {
+            ProcessType(nestedType);
+        }
+    }
+
     public static (byte[], byte[], byte[]) OnEncrypt(byte[] by)
     {
         using Aes aes = Aes.Create();

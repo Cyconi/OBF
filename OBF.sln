@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35303.130
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OBF", "OBF\OBF.csproj", "{36A5F3DC-5FD0-4219-AB45-6A2AF9DD24C1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OBF", "OBF\OBF.csproj", "{36A5F3DC-5FD0-4219-AB45-6A2AF9DD24C1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestOBF", "TestOBF\TestOBF.csproj", "{676AA00C-1627-4277-8EA1-0BACE43AD298}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{36A5F3DC-5FD0-4219-AB45-6A2AF9DD24C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36A5F3DC-5FD0-4219-AB45-6A2AF9DD24C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36A5F3DC-5FD0-4219-AB45-6A2AF9DD24C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{676AA00C-1627-4277-8EA1-0BACE43AD298}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{676AA00C-1627-4277-8EA1-0BACE43AD298}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{676AA00C-1627-4277-8EA1-0BACE43AD298}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{676AA00C-1627-4277-8EA1-0BACE43AD298}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

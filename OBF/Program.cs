@@ -44,15 +44,15 @@ internal class Program
 
         //AntiDebug.InitAntiDebug(assembly);
 
-        //StringEncryption.AddDecryptionMethod(assembly);  // kinda works
+        StringEncryption.AddDecryptionMethod(assembly);  // kinda works
 
-        //StringEncryption.EncryptStrings(assembly); // maybe?
+        StringEncryption.EncryptStrings(assembly); // maybe?
 
-        CodeInjection.InjectCode(assembly); // works, want to add class injection
+        //CodeInjection.InjectCode(assembly); // works, want to add class injection
 
-        ControlFlow.CtrlFlow(assembly); // need work
+        //ControlFlow.CtrlFlow(assembly); // need work
 
-        Renaming.RenameAssembly(assembly); // works, not sure i can do much more
+        //Renaming.RenameAssembly(assembly); // works, not sure i can do much more
 
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory).FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
         string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Hexed\Settings\UnityLoader\VRChat\Cheats\" + Path.GetFileName(newDllPath);
@@ -60,7 +60,7 @@ internal class Program
         assembly.Write(newDllPath);
         Console.WriteLine($"Obfuscated DLL written to: {newDllPath}");
 
-        File.Copy(newDllPath, additionalPath, true);
+        //File.Copy(newDllPath, additionalPath, true);
         Console.WriteLine($"Obfuscated DLL copied to: {additionalPath}");
 
         Console.Write("\nPress any key to close this window . . .");
