@@ -58,10 +58,10 @@ public static class StringEncryption
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_1));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetProperty("Key").GetSetMethod())));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetProperty("Key")?.GetSetMethod())));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_2));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetProperty("IV").GetSetMethod())));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Aes).GetProperty("IV")?.GetSetMethod())));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Newobj, module.ImportReference(typeof(MemoryStream).GetConstructor(Type.EmptyTypes))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_1));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_1));
@@ -115,47 +115,52 @@ public static class StringEncryption
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_2));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Call, onDecryptMethod));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Stloc_3));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Encoding).GetProperty("UTF8").GetGetMethod())));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Call, module.ImportReference(typeof(Encoding).GetProperty("UTF8")?.GetGetMethod())));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_3));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Encoding).GetMethod("GetString", [typeof(byte[])]))));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ret));
 
         return method;
     }
-    public static List<string> FoundStrings { get; private set; }
-    private static MethodDefinition getMethod;
-    private static FieldDefinition initializedField;
-    private static FieldDefinition listField;
-    private static MethodDefinition initializeMethod;
-    private static TypeDefinition type;
-    public static bool EncryptStrings(AssemblyDefinition assembly)
+    public static List<string> FoundStrings { get; private set; } = [];
+    private static MethodDefinition? getMethod;
+    private static FieldDefinition? initField;
+    private static FieldDefinition? listField;
+    private static MethodDefinition? initMethod;
+    private static TypeDefinition? typeHandle;
+    public static void EncryptStrings(AssemblyDefinition assembly)
     {
         var types = assembly.MainModule.Types;
 
-        FoundStrings = [];
-        AddHandler(assembly);
+        AddDecryptionMethod(assembly); // works
+        AddHandler(assembly); // works
 
-        foreach (var type in types)
+        foreach (var type in types) // has issues with some methods (nested?)
+        {
             ProcessType(type);
+            foreach (var nestedType in type.NestedTypes) // has issues with some methods (nested?)
+                ProcessType(nestedType);
+        }
+            
+
 
         FinalizeHandler(assembly);
-        return true;
     }
     private static void AddHandler(AssemblyDefinition assembly)
     {
-        type = new TypeDefinition("Embed", "StringEncryption", TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract, assembly.MainModule.ImportReference(typeof(object)));
+        typeHandle = new TypeDefinition("Embed", "StringEncryption", TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract, assembly.MainModule.ImportReference(typeof(object)));
 
-        initializedField = new FieldDefinition("initialized", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(bool)));
+        initField = new FieldDefinition("initialized", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(bool)));
         listField = new FieldDefinition("list", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(List<string>)));
-        initializeMethod = new MethodDefinition("Initialize", MethodAttributes.Private | MethodAttributes.Static, assembly.MainModule.ImportReference(typeof(void)));
-        type.Methods.Add(initializeMethod);
-        type.Fields.Add(initializedField);
-        type.Fields.Add(listField);
+        initMethod = new MethodDefinition("Initialize", MethodAttributes.Private | MethodAttributes.Static, assembly.MainModule.ImportReference(typeof(void)));
+        typeHandle.Methods.Add(initMethod);
+        typeHandle.Fields.Add(initField);
+        typeHandle.Fields.Add(listField);
 
         getMethod = new MethodDefinition("Get", MethodAttributes.Public | MethodAttributes.Static, assembly.MainModule.ImportReference(typeof(string)));
         getMethod.Parameters.Add(new ParameterDefinition(assembly.MainModule.ImportReference(typeof(int))));
 
-        type.Methods.Add(getMethod);
+        typeHandle.Methods.Add(getMethod);
 
         {
             var processor = getMethod.Body.GetILProcessor();
@@ -166,7 +171,7 @@ public static class StringEncryption
             var instructions = processor.Body.Instructions;
 
             // Add instructions
-            processor.Emit(OpCodes.Ldsfld, initializedField);
+            processor.Emit(OpCodes.Ldsfld, initField);
             processor.Emit(OpCodes.Stloc_1);
             processor.Emit(OpCodes.Ldloc_1);
 
@@ -174,7 +179,7 @@ public static class StringEncryption
             var brtrueInstruction = processor.Create(OpCodes.Nop);
             processor.Append(brtrueInstruction);
 
-            processor.Emit(OpCodes.Call, initializeMethod);
+            processor.Emit(OpCodes.Call, initMethod);
             processor.Emit(OpCodes.Ldsfld, listField);
             processor.Emit(OpCodes.Ldarg_0);
             processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(List<string>).GetMethod("get_Item")));
@@ -188,7 +193,10 @@ public static class StringEncryption
     }
     private static void FinalizeHandler(AssemblyDefinition assembly)
     {
-        var processor = initializeMethod.Body.GetILProcessor();
+        var processor = initMethod?.Body.GetILProcessor();
+        if (processor == null)
+            return;
+
         processor.Emit(OpCodes.Ldc_I4, FoundStrings.Count);
         processor.Emit(OpCodes.Newobj, assembly.MainModule.ImportReference(typeof(List<string>).GetConstructors()[1]));
         processor.Emit(OpCodes.Stsfld, listField);
@@ -202,9 +210,9 @@ public static class StringEncryption
             processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(List<string>).GetMethod("Add")));
         }
         processor.Emit(OpCodes.Ldc_I4_1);
-        processor.Emit(OpCodes.Stsfld, initializedField);
+        processor.Emit(OpCodes.Stsfld, initField);
         processor.Emit(OpCodes.Ret);
-        assembly.MainModule.Types.Add(type);
+        assembly.MainModule.Types.Add(typeHandle);
     }
     private static void ProcessType(TypeDefinition type)
     {
@@ -213,9 +221,6 @@ public static class StringEncryption
 
         foreach (var method in type.Methods)
             ProcessMethod(method);
-
-        foreach (var nestedType in type.NestedTypes)
-            ProcessType(nestedType);
     }
     private static void ProcessMethod(MethodDefinition method)
     {

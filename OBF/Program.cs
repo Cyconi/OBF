@@ -2,10 +2,9 @@
 using Mono.Cecil.Cil;
 using OBF.Modules;
 using OBF.ILProcessing;
-using OBF.Modules;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Collections.Generic;
 using System.Runtime.ConstrainedExecution;
+using System.Diagnostics;
 
 namespace OBF;
 
@@ -15,6 +14,8 @@ internal class Program
     {
         Console.WriteLine("Enter the name of the DLL:");
         var dll = Console.ReadLine();
+        if (dll == null)
+            return;
 
         // Ensure the DLL name ends with .dll
         if (!dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
@@ -44,8 +45,7 @@ internal class Program
 
         //AntiDebug.InitAntiDebug(assembly);
 
-        StringEncryption.AddDecryptionMethod(assembly);  // kinda works
-        StringEncryption.EncryptStrings(assembly); // maybe?
+        StringEncryption.EncryptStrings(assembly); // has issues with some methods (nested?)
 
         //CodeInjection.InjectCode(assembly); // works, want to add class injection
         //ControlFlow.CtrlFlow(assembly); // need work
@@ -55,14 +55,25 @@ internal class Program
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory).FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
         string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Hexed\Settings\UnityLoader\VRChat\Cheats\" + Path.GetFileName(newDllPath);
 
-        assembly.Write(newDllPath);
-        Console.WriteLine($"Obfuscated DLL written to: {newDllPath}");
+        try
+        {
+            assembly.Write(newDllPath);
+            Console.WriteLine($"Obfuscated DLL written to: {newDllPath}");
+        }
+        catch { Console.WriteLine($"Path does not exist: {newDllPath}"); }
 
-        File.Copy(newDllPath, additionalPath, true);
-        Console.WriteLine($"Obfuscated DLL copied to: {additionalPath}");
+        try
+        {
+            File.Copy(newDllPath, additionalPath, true);
+            Console.WriteLine($"Obfuscated DLL copied to: {additionalPath}");
+        }
+        catch { Console.WriteLine($"Path does not exist: {additionalPath}"); }
+
+        if (Debugger.IsAttached)
+            return;
 
         Console.Write("\nPress any key to close this window . . .");
-        Console.ReadKey();
+        Console.ReadLine();
     }
 }
 
