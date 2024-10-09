@@ -122,16 +122,12 @@ public static class StringEncryption
 
         return method;
     }
-
     public static List<string> FoundStrings { get; private set; }
-    private static MethodDefinition _getMethod;
-    private static FieldDefinition _initializedField;
-    private static FieldDefinition _listField;
-    private static FieldDefinition _keyField;
-    private static FieldDefinition _ivField;
-    private static MethodDefinition _initializeMethod;
-    private static TypeDefinition _type;
-
+    private static MethodDefinition getMethod;
+    private static FieldDefinition initializedField;
+    private static FieldDefinition listField;
+    private static MethodDefinition initializeMethod;
+    private static TypeDefinition type;
     public static bool EncryptStrings(AssemblyDefinition assembly)
     {
         var types = assembly.MainModule.Types;
@@ -145,81 +141,71 @@ public static class StringEncryption
         FinalizeHandler(assembly);
         return true;
     }
-
     private static void AddHandler(AssemblyDefinition assembly)
     {
-        _type = new TypeDefinition("obfuscatus", "StringHandler",
-                                   TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.AutoClass |
-                                   TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit |
-                                   TypeAttributes.Abstract, assembly.MainModule.Import(typeof(object)));
+        type = new TypeDefinition("Embed", "StringEncryption", TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract, assembly.MainModule.ImportReference(typeof(object)));
 
-        _initializedField = new FieldDefinition("_initialized", FieldAttributes.Private | FieldAttributes.Static,
-                                                assembly.MainModule.Import(typeof(bool)));
-        _listField = new FieldDefinition("_list", FieldAttributes.Private | FieldAttributes.Static,
-                                         assembly.MainModule.Import(typeof(List<string>)));
-        _keyField = new FieldDefinition("_key", FieldAttributes.Private | FieldAttributes.Static,
-                                        assembly.MainModule.Import(typeof(string)));
-        _ivField = new FieldDefinition("_iv", FieldAttributes.Private | FieldAttributes.Static,
-                                       assembly.MainModule.Import(typeof(string)));
-        _initializeMethod = new MethodDefinition("Initialize", MethodAttributes.Private | MethodAttributes.Static,
-                                                 assembly.MainModule.Import(typeof(void)));
-        _type.Methods.Add(_initializeMethod);
-        _type.Fields.Add(_initializedField);
-        _type.Fields.Add(_listField);
-        _type.Fields.Add(_keyField);
-        _type.Fields.Add(_ivField);
+        initializedField = new FieldDefinition("initialized", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(bool)));
+        listField = new FieldDefinition("list", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(List<string>)));
+        initializeMethod = new MethodDefinition("Initialize", MethodAttributes.Private | MethodAttributes.Static, assembly.MainModule.ImportReference(typeof(void)));
+        type.Methods.Add(initializeMethod);
+        type.Fields.Add(initializedField);
+        type.Fields.Add(listField);
 
-        _getMethod = new MethodDefinition("Get", MethodAttributes.Public | MethodAttributes.Static,
-                                          assembly.MainModule.Import(typeof(string)));
-        _getMethod.Parameters.Add(new ParameterDefinition(assembly.MainModule.Import(typeof(int))));
+        getMethod = new MethodDefinition("Get", MethodAttributes.Public | MethodAttributes.Static, assembly.MainModule.ImportReference(typeof(string)));
+        getMethod.Parameters.Add(new ParameterDefinition(assembly.MainModule.ImportReference(typeof(int))));
 
-        _type.Methods.Add(_getMethod);
+        type.Methods.Add(getMethod);
 
         {
-            var processor = _getMethod.Body.GetILProcessor();
+            var processor = getMethod.Body.GetILProcessor();
             processor.Body.InitLocals = true;
-            processor.Body.Variables.Add(new VariableDefinition(assembly.MainModule.Import(typeof(string))));
-            processor.Body.Variables.Add(new VariableDefinition(assembly.MainModule.Import(typeof(bool))));
-            processor.Emit(OpCodes.Ldsfld, _initializedField);
+            processor.Body.Variables.Add(new VariableDefinition(assembly.MainModule.ImportReference(typeof(string))));
+            processor.Body.Variables.Add(new VariableDefinition(assembly.MainModule.ImportReference(typeof(bool))));
+
+            var instructions = processor.Body.Instructions;
+
+            // Add instructions
+            processor.Emit(OpCodes.Ldsfld, initializedField);
             processor.Emit(OpCodes.Stloc_1);
             processor.Emit(OpCodes.Ldloc_1);
-            processor.Emit(OpCodes.Nop);
-            processor.Emit(OpCodes.Call, _initializeMethod);
-            processor.Emit(OpCodes.Ldsfld, _listField);
+
+            // Placeholder for Brtrue_S
+            var brtrueInstruction = processor.Create(OpCodes.Nop);
+            processor.Append(brtrueInstruction);
+
+            processor.Emit(OpCodes.Call, initializeMethod);
+            processor.Emit(OpCodes.Ldsfld, listField);
             processor.Emit(OpCodes.Ldarg_0);
-            processor.Emit(OpCodes.Callvirt, assembly.MainModule.Import(typeof(List<string>).GetMethod("get_Item")));
+            processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(List<string>).GetMethod("get_Item")));
             processor.Emit(OpCodes.Stloc_0);
             processor.Emit(OpCodes.Ldloc_0);
             processor.Emit(OpCodes.Ret);
-            // fix up initialization check
-            processor.Replace(processor.Body.Instructions[3],
-                              processor.Create(OpCodes.Brtrue_S, processor.Body.Instructions[5]));
+
+            // Replace placeholder with Brtrue_S
+            processor.Replace(brtrueInstruction, processor.Create(OpCodes.Brtrue_S, instructions[4]));
         }
     }
-
     private static void FinalizeHandler(AssemblyDefinition assembly)
     {
-        var processor = _initializeMethod.Body.GetILProcessor();
-        var (encryptedStrings, key, iv) = EncryptStrings(FoundStrings);
-        processor.Emit(OpCodes.Ldc_I4, encryptedStrings.Count);
-        processor.Emit(OpCodes.Newobj, assembly.MainModule.Import(typeof(List<string>).GetConstructors()[1]));
-        processor.Emit(OpCodes.Stsfld, _listField);
-        foreach (var str in encryptedStrings)
+        var processor = initializeMethod.Body.GetILProcessor();
+        processor.Emit(OpCodes.Ldc_I4, FoundStrings.Count);
+        processor.Emit(OpCodes.Newobj, assembly.MainModule.ImportReference(typeof(List<string>).GetConstructors()[1]));
+        processor.Emit(OpCodes.Stsfld, listField);
+        foreach (var str in FoundStrings)
         {
-            processor.Emit(OpCodes.Ldsfld, _listField);
-            processor.Emit(OpCodes.Ldstr, str);
-            processor.Emit(OpCodes.Callvirt, assembly.MainModule.Import(typeof(List<string>).GetMethod("Add")));
+            var (encryptedString, keyString, ivString) = EncryptString(str);
+            processor.Emit(OpCodes.Ldsfld, listField);
+            processor.Emit(OpCodes.Ldstr, encryptedString);
+            processor.Emit(OpCodes.Ldstr, keyString);
+            processor.Emit(OpCodes.Ldstr, ivString);
+            processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(List<string>).GetMethod("Add")));
         }
-        processor.Emit(OpCodes.Ldstr, Convert.ToBase64String(key));
-        processor.Emit(OpCodes.Stsfld, _keyField);
-        processor.Emit(OpCodes.Ldstr, Convert.ToBase64String(iv));
-        processor.Emit(OpCodes.Stsfld, _ivField);
         processor.Emit(OpCodes.Ldc_I4_1);
-        processor.Emit(OpCodes.Stsfld, _initializedField);
+        processor.Emit(OpCodes.Stsfld, initializedField);
         processor.Emit(OpCodes.Ret);
-        assembly.MainModule.Types.Add(_type);
+        assembly.MainModule.Types.Add(type);
     }
-
     private static void ProcessType(TypeDefinition type)
     {
         if (!type.HasMethods)
@@ -227,8 +213,10 @@ public static class StringEncryption
 
         foreach (var method in type.Methods)
             ProcessMethod(method);
-    }
 
+        foreach (var nestedType in type.NestedTypes)
+            ProcessType(nestedType);
+    }
     private static void ProcessMethod(MethodDefinition method)
     {
         if (!method.HasBody)
@@ -238,10 +226,7 @@ public static class StringEncryption
         var instructionsToReplace = new Dictionary<Instruction, int>();
         foreach (var instruction in method.Body.Instructions)
         {
-            if (instruction.OpCode.Code != Code.Ldstr)
-                continue;
-
-            if (!(instruction.Operand is string))
+            if (instruction.OpCode.Code != Code.Ldstr || instruction.Operand is not string)
                 continue;
 
             FoundStrings.Add(instruction.Operand as string);
@@ -250,131 +235,30 @@ public static class StringEncryption
 
         foreach (var kvp in instructionsToReplace)
         {
-            processor.InsertAfter(kvp.Key, processor.Create(OpCodes.Call, _getMethod));
-            processor.Replace(kvp.Key, processor.Create(OpCodes.Ldc_I4, kvp.Value));
+            // Insert the call to getMethod
+            var callInstruction = processor.Create(OpCodes.Call, getMethod);
+            processor.InsertAfter(kvp.Key, callInstruction);
+
+            // Replace the original instruction with ldc.i4
+            var ldcInstruction = processor.Create(OpCodes.Ldc_I4, kvp.Value);
+            processor.Replace(kvp.Key, ldcInstruction);
         }
     }
-
-    private static (List<string>, byte[], byte[]) EncryptStrings(List<string> strings)
+    private static (string encryptedString, string keyString, string ivString) EncryptString(string originalString)
     {
-        var encryptedStrings = new List<string>();
-        byte[] key = null;
-        byte[] iv = null;
-        foreach (var str in strings)
-        {
-            var (encrypted, k, i) = OnEncrypt(Encoding.UTF8.GetBytes(str));
-            encryptedStrings.Add(Convert.ToBase64String(encrypted));
-            key = k;
-            iv = i;
-        }
-        return (encryptedStrings, key, iv);
-    }
-
-    public static (byte[], byte[], byte[]) OnEncrypt(byte[] by)
-    {
+        byte[] originalBytes = Encoding.UTF8.GetBytes(originalString);
         using Aes aes = Aes.Create();
         aes.GenerateKey();
         aes.GenerateIV();
-        using MemoryStream mrms = new();
-        using (CryptoStream cryste = new(mrms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+        using MemoryStream ms = new();
+        using (CryptoStream cs = new(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
         {
-            cryste.Write(by, 0, by.Length);
-            cryste.FlushFinalBlock();
+            cs.Write(originalBytes, 0, originalBytes.Length);
+            cs.FlushFinalBlock();
         }
-        return (mrms.ToArray(), aes.Key, aes.IV);
+        string encryptedString = Convert.ToBase64String(ms.ToArray());
+        string keyString = Convert.ToBase64String(aes.Key);
+        string ivString = Convert.ToBase64String(aes.IV);
+        return (encryptedString, keyString, ivString);
     }
-    /*public static void EncryptStrings(AssemblyDefinition assembly)
-    {
-        Console.WriteLine("Starting string encryption...");
-
-        foreach (TypeDefinition type in assembly.MainModule.Types)
-            if (type.Name != "EmbeddedStringEncryption")
-                ProcessType(type);
-
-        Console.WriteLine("String encryption completed.");
-    }
-
-    private static void ProcessType(TypeDefinition type)
-    {
-        Console.WriteLine($"Processing type: {type.Name}");
-
-        foreach (MethodDefinition method in type.Methods)
-        {
-            if (method.Body == null)
-                continue;
-
-            Console.WriteLine($"Processing method: {method.Name}");
-
-            var ilProcessor = method.Body.GetILProcessor();
-            var decryptMethod = type.Module.Types.First(t => t.Name == "EmbeddedStringEncryption").Methods.First(m => m.Name == "DecryptString");
-
-            var instructionsToReplace = new List<(Instruction, List<Instruction>)>();
-
-            for (int i = 0; i < method.Body.Instructions.Count; i++)
-            {
-                var instruction = method.Body.Instructions[i];
-
-                if (instruction.OpCode == OpCodes.Ldstr)
-                {
-                    string originalString = (string)instruction.Operand;
-
-                    Console.WriteLine($"Encrypting string: {originalString}");
-
-                    byte[] originalBytes = Encoding.UTF8.GetBytes(originalString);
-                    var (encryptedBytes, key, iv) = OnEncrypt(originalBytes);
-                    string encryptedString = Convert.ToBase64String(encryptedBytes);
-                    string keyString = Convert.ToBase64String(key);
-                    string ivString = Convert.ToBase64String(iv);
-
-                    // Validate the encrypted string, key, and IV
-                    if (!string.IsNullOrEmpty(encryptedString) && !string.IsNullOrEmpty(keyString) && !string.IsNullOrEmpty(ivString))
-                    {
-                        // Create new instructions
-                        var newInstructions = new List<Instruction>
-                        {
-                            ilProcessor.Create(OpCodes.Ldstr, encryptedString),
-                            ilProcessor.Create(OpCodes.Ldstr, keyString),
-                            ilProcessor.Create(OpCodes.Ldstr, ivString),
-                            ilProcessor.Create(OpCodes.Call, type.Module.ImportReference(decryptMethod))
-                        };
-
-                        // Validate all new instructions
-                        if (newInstructions.All(instr => instr != null && instr.Operand != null))                        
-                            instructionsToReplace.Add((instruction, newInstructions));                        
-                        else                        
-                            Console.WriteLine($"\n\nError: One or more new instructions are invalid. Skipping replacement for: {originalString}\n\n");
-                    }
-                    else
-                        Console.WriteLine($"\n\nError: Invalid encrypted string, key, or IV. Skipping replacement for: {originalString}\n\n");
-                }
-            }
-
-            // Perform the replacements after collecting all instructions to replace
-            foreach (var (originalInstruction, newInstructions) in instructionsToReplace)
-            {
-                ilProcessor.Replace(originalInstruction, newInstructions[0]);
-                for (int j = 1; j < newInstructions.Count; j++)
-                    ilProcessor.InsertAfter(newInstructions[j - 1], newInstructions[j]);
-            }
-
-            Console.WriteLine($"String encrypted and decryption call inserted in {type.Name} | {method.Name}");
-        }
-
-        foreach (var nestedType in type.NestedTypes)
-            ProcessType(nestedType);
-    }
-
-    public static (byte[], byte[], byte[]) OnEncrypt(byte[] by)
-    {
-        using Aes aes = Aes.Create();
-        aes.GenerateKey();
-        aes.GenerateIV();
-        using MemoryStream mrms = new();
-        using (CryptoStream cryste = new(mrms, aes.CreateEncryptor(), CryptoStreamMode.Write))
-        {
-            cryste.Write(by, 0, by.Length);
-            cryste.FlushFinalBlock();
-        }
-        return (mrms.ToArray(), aes.Key, aes.IV);
-    }*/
 }

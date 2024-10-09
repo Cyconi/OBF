@@ -58,7 +58,7 @@ internal class Program
         assembly.Write(newDllPath);
         Console.WriteLine($"Obfuscated DLL written to: {newDllPath}");
 
-        //File.Copy(newDllPath, additionalPath, true);
+        File.Copy(newDllPath, additionalPath, true);
         Console.WriteLine($"Obfuscated DLL copied to: {additionalPath}");
 
         Console.Write("\nPress any key to close this window . . .");
