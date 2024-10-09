@@ -45,11 +45,9 @@ internal class Program
         //AntiDebug.InitAntiDebug(assembly);
 
         StringEncryption.AddDecryptionMethod(assembly);  // kinda works
-
         StringEncryption.EncryptStrings(assembly); // maybe?
 
         //CodeInjection.InjectCode(assembly); // works, want to add class injection
-
         //ControlFlow.CtrlFlow(assembly); // need work
 
         //Renaming.RenameAssembly(assembly); // works, not sure i can do much more
