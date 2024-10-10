@@ -6,20 +6,20 @@ namespace TestOBF
 {
     public class Class1
     {
-        internal static bool wasLaunched;
+        /*internal static bool wasLaunched;
         internal static Process consoleLogsProcess;
-        internal static WebClient webClient;
+        internal static WebClient webClient;*/
         internal static void Launch()
         {
             Console.WriteLine("[Dependencies] Downloading ConsoleLogs.exe...");
-            using (WebClient webClient1 = new WebClient()) // why why why whyw hywhywhyhwyhw 
+            /*using (WebClient webClient1 = new WebClient()) // why why why whyw hywhywhyhwyhw 
             {
                 webClient1.DownloadFile("https://github.com/Cyconi/EXO-Resources/raw/main/ConsoleLogs.exe", "text");
                 //Console.WriteLine("Downloaded to: " + text);
-            }
+            }*/
             Console.WriteLine("[Dependencies] ConsoleLogs.exe Downloaded!");
         }
-        internal static void Launch2()
+        /*internal static void Launch2()
         {
             webClient = new WebClient();
             string text = "ConsoleLogs";
@@ -57,6 +57,6 @@ namespace TestOBF
             bool flag = wasLaunched && consoleLogsProcess != null;
             if (flag)
                 consoleLogsProcess.Close();
-        }
+        }*/
     }
 }
