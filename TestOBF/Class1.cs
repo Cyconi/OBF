@@ -1,23 +1,41 @@
 ﻿using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace TestOBF
 {
     public class Class1
     {
-        /*internal static bool wasLaunched;
+        internal static bool wasLaunched;
         internal static Process consoleLogsProcess;
-        internal static WebClient webClient;*/
+        internal static WebClient webClient;
         internal static void Launch()
         {
-            Console.WriteLine("[Dependencies] Downloading ConsoleLogs.exe...");
-            /*using (WebClient webClient1 = new WebClient()) // why why why whyw hywhywhyhwyhw 
+            //Console.WriteLine("[Dependencies] Downloading ConsoleLogs.exe...");
+            using (WebClient webClient1 = new WebClient()) // why why why whyw hywhywhyhwyhw 
             {
-                webClient1.DownloadFile("https://github.com/Cyconi/EXO-Resources/raw/main/ConsoleLogs.exe", "text");
-                //Console.WriteLine("Downloaded to: " + text);
-            }*/
+                //webClient1.DownloadFile("https://github.com/Cyconi/EXO-Resources/raw/main/ConsoleLogs.exe", "text");
+                Console.WriteLine("Downloaded to: ");
+            }
+            //Console.ReadKey();
             Console.WriteLine("[Dependencies] ConsoleLogs.exe Downloaded!");
+        }
+        private static async Task WaitForConnection()
+        {
+            var client = new TcpClient();
+            try
+            {
+                Console.WriteLine("Connecting...");
+                
+            }
+            catch (Exception ex2)
+            {
+                Console.WriteLine($"Connection Exception: {ex2}");
+            }
         }
         /*internal static void Launch2()
         {
@@ -36,7 +54,7 @@ namespace TestOBF
                     if (flag2)
                     {
                         Console.WriteLine("[Dependencies] Downloading ConsoleLogs.exe...");
-                        webClient.DownloadFile("https://github.com/Cyconi/EXO-Resources/raw/main/ConsoleLogs.exe", text3);
+                        webDownloadFile("https://github.com/Cyconi/EXO-Resources/raw/main/ConsoleLogs.exe", text3);
                         Console.WriteLine("Downloaded to: " + text3);
                         Console.WriteLine("[Dependencies] ConsoleLogs.exe Downloaded!");
                     }
@@ -49,7 +67,7 @@ namespace TestOBF
                     Console.WriteLine($"Failed to start {text} | Error: {ex.Message}");
                     Console.WriteLine("Stack Trace: " + ex.StackTrace);
                 }
-                webClient.Dispose();
+                webDispose();
             }
         }
         internal static void OnClose()

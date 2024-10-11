@@ -335,29 +335,83 @@ public static class StringEncryption
     }
     private static void ProcessMethod(MethodDefinition method)
     {
+        // Check if the method has a body (i.e., it contains IL code)
         if (!method.HasBody)
-            return;
+            return; // If the method doesn't have a body, exit the function
 
+        // Get the IL processor for the method's body
         var processor = method.Body.GetILProcessor();
+
+        // Create a dictionary to store instructions to be replaced and their corresponding indices in FoundStrings
         var instructionsToReplace = new Dictionary<Instruction, int>();
+
+        // Create a dictionary to store leave instructions and their targets
+        var leaveInstructions = new Dictionary<Instruction, Instruction>();
+
+        // Create a list to store endfinally instructions
+        var endfinallyInstructions = new List<Instruction>();
+
+        // Iterate through each instruction in the method's body
         foreach (var instruction in method.Body.Instructions)
         {
-            if (instruction.OpCode.Code != Code.Ldstr || instruction.Operand is not string)
-                continue;
+            // Check if the instruction is a load string (ldstr) instruction and its operand is a string
+            if (instruction.OpCode.Code == Code.Ldstr && instruction.Operand is string)
+            {
+                // Add the string operand to the FoundStrings list
+                FoundStrings.Add(instruction.Operand as string);
 
-            FoundStrings.Add(instruction.Operand as string);
-            instructionsToReplace.Add(instruction, FoundStrings.Count - 1);
+                // Add the instruction and its index in FoundStrings to the dictionary
+                instructionsToReplace.Add(instruction, FoundStrings.Count - 1);
+            }
+
+            // Check if the instruction is a leave.s instruction
+            if (instruction.OpCode.Code == Code.Leave_S)
+                leaveInstructions.Add(instruction, (Instruction)instruction.Operand); // Store the leave instruction and its target
+
+
+            // Check if the instruction is an endfinally instruction
+            if (instruction.OpCode.Code == Code.Endfinally)
+                endfinallyInstructions.Add(instruction); // Add the endfinally instruction to the list
+
         }
 
+        // Iterate through each key-value pair in the instructionsToReplace dictionary
         foreach (var kvp in instructionsToReplace)
         {
-            // Insert the call to getMethod
-            var callInstruction = processor.Create(OpCodes.Call, getMethod);
-            processor.InsertAfter(kvp.Key, callInstruction);
-
-            // Replace the original instruction with ldc.i4
+            // Create a load constant integer (ldc.i4) instruction with the index value
             var ldcInstruction = processor.Create(OpCodes.Ldc_I4, kvp.Value);
-            processor.Replace(kvp.Key, ldcInstruction);
+
+            // Replace the original instruction with the ldc.i4 instruction
+            processor.InsertAfter(kvp.Key, ldcInstruction);
+
+            // Check if the original instruction is after an endfinally instruction
+            bool isAfterEndfinally = false;
+            foreach (var endfinallyInstruction in endfinallyInstructions)
+            {
+                if (method.Body.Instructions.IndexOf(endfinallyInstruction) < method.Body.Instructions.IndexOf(kvp.Key))
+                {
+                    isAfterEndfinally = true;
+                    break;
+                }
+            }
+
+            if (isAfterEndfinally)           
+                kvp.Key.Operand = string.Empty; // Set the operand of the original instruction to an empty string
+            else          
+                processor.Remove(kvp.Key); // Remove the original instruction
+            
+
+            // Create a call instruction to the getMethod
+            var callInstruction = processor.Create(OpCodes.Call, getMethod);
+
+            // Insert the call instruction after the ldc.i4 instruction
+            processor.InsertAfter(ldcInstruction, callInstruction);
+
+            // Update the target of any leave instructions pointing to the replaced instruction
+            foreach (var leaveInstruction in leaveInstructions)
+                if (leaveInstruction.Value == kvp.Key)
+                    leaveInstruction.Key.Operand = ldcInstruction;
+
         }
     }
     private static (string encryptedString, string keyString, string ivString) EncryptString(string originalString)

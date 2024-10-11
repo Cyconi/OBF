@@ -226,7 +226,7 @@ public static class Renaming
         }
     }
 
-    static Dictionary<string, string> nameMap = new();
+    private static readonly Dictionary<string, string> nameMap = [];
     public static string GenerateUniqueName() => GenerateUniqueName("Unnamed");
     private static string GenerateUniqueName(string originalName)
     {

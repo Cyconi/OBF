@@ -55,12 +55,8 @@ internal class Program
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory).FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
         string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Hexed\Settings\UnityLoader\VRChat\Cheats\" + Path.GetFileName(newDllPath);
 
-        try
-        {
-            assembly.Write(newDllPath);
-            Console.WriteLine($"Obfuscated DLL written to: {newDllPath}");
-        }
-        catch { Console.WriteLine($"Path does not exist: {newDllPath}"); }
+        assembly.Write(newDllPath);
+        Console.WriteLine($"Obfuscated DLL written to: {newDllPath}");
 
         try
         {
