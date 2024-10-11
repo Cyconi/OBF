@@ -46,7 +46,7 @@ public static class StringEncryption
     {
         // Create a new type definition for the encryption class
         return new TypeDefinition("Embed", "EmbeddedStringEncryption",
-            TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed,
+            TypeAttributes.NotPublic | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed,
             module.TypeSystem.Object);
     }
     private static MethodDefinition CreateOnDecryptMethod(ModuleDefinition module)
@@ -171,6 +171,7 @@ public static class StringEncryption
         return method;
     }
     #endregion
+    #region Handler
     public static List<string> FoundStrings { get; private set; } = [];
     private static MethodDefinition? getMethod;
     private static FieldDefinition? initField;
@@ -180,7 +181,7 @@ public static class StringEncryption
     private static void AddHandler(AssemblyDefinition assembly)
     {
         // Define a new type called "StringEncryption" with various attributes
-        typeHandle = new TypeDefinition("Embed", "StringEncryption", TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract, assembly.MainModule.ImportReference(typeof(object)));
+        typeHandle = new TypeDefinition("Embed", "StringEncryption", TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract, assembly.MainModule.ImportReference(typeof(object)));
 
         // Define a private static boolean field named "initialized"
         initField = new FieldDefinition("initialized", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(bool)));
@@ -262,8 +263,6 @@ public static class StringEncryption
         // Replace placeholder with Brtrue_S
         processor.Replace(brtrueInstruction, processor.Create(OpCodes.Brtrue_S, instructions[5])); // Replace the placeholder with a conditional branch instruction (places StringEncryption.Initialize(); inside the if statement)
     }
-
-
     private static void FinalizeHandler(AssemblyDefinition assembly)
     {
         // Get the IL processor for the "Initialize" method's body
@@ -310,7 +309,7 @@ public static class StringEncryption
         // Add the type to the assembly's module types
         assembly.MainModule.Types.Add(typeHandle);
     }
-
+    #endregion
     public static void EncryptStrings(AssemblyDefinition assembly)
     {
         var types = assembly.MainModule.Types;
