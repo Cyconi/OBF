@@ -185,8 +185,17 @@ public static class StringEncryption
         // Define a private static boolean field named "initialized"
         initField = new FieldDefinition("initialized", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(bool)));
 
-        // Define a private static field named "list" of type List<string>
-        listField = new FieldDefinition("list", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(List<string>)));
+        // Define a private static field named "dictionary" of type Dictionary<int, (string, string, string)>
+        var dictionaryType = assembly.MainModule.ImportReference(typeof(Dictionary<,>))
+            .MakeGenericInstanceType(assembly.MainModule.TypeSystem.Int32,
+                assembly.MainModule.ImportReference(typeof(ValueTuple<,,>))
+            .MakeGenericInstanceType(assembly.MainModule.TypeSystem.String, 
+                assembly.MainModule.TypeSystem.String,
+                assembly.MainModule.TypeSystem.String));
+
+        var dictionaryField = new FieldDefinition("dictionary", FieldAttributes.Private | FieldAttributes.Static, dictionaryType);
+
+        listField = new FieldDefinition("dictionary", FieldAttributes.Private | FieldAttributes.Static, dictionaryType);
 
         // Define a private static method named "Initialize"
         initMethod = new MethodDefinition("Initialize", MethodAttributes.Private | MethodAttributes.Static, assembly.MainModule.ImportReference(typeof(void)));
@@ -194,7 +203,7 @@ public static class StringEncryption
         // Add the "Initialize" method to the type
         typeHandle.Methods.Add(initMethod);
 
-        // Add the "initialized" and "list" fields to the type
+        // Add the "initialized" and "dictionary" fields to the type
         typeHandle.Fields.Add(initField);
         typeHandle.Fields.Add(listField);
 
@@ -212,10 +221,11 @@ public static class StringEncryption
         // Define local variables for the method
         processor.Body.Variables.Add(new VariableDefinition(assembly.MainModule.ImportReference(typeof(string))));
         processor.Body.Variables.Add(new VariableDefinition(assembly.MainModule.ImportReference(typeof(bool))));
+        processor.Body.Variables.Add(new VariableDefinition(assembly.MainModule.ImportReference(typeof(ValueTuple<string, string, string>))));
 
         var instructions = processor.Body.Instructions;
 
-        // Check if the list is initialized
+        // Check if the dictionary is initialized
         processor.Emit(OpCodes.Ldsfld, initField); // Load the value of the "initialized" field onto the stack
         processor.Emit(OpCodes.Stloc_1); // Store the value in the local variable at index 1 (bool)
         processor.Emit(OpCodes.Ldloc_1); // Load the value of the local variable at index 1 onto the stack
@@ -227,18 +237,21 @@ public static class StringEncryption
         // Call Initialize method if not initialized
         processor.Emit(OpCodes.Call, initMethod); // Call the "Initialize" method
 
-        // Retrieve the string from the list
-        processor.Emit(OpCodes.Ldsfld, listField); // Load the value of the "list" field onto the stack
+        // Retrieve the tuple from the dictionary
+        processor.Emit(OpCodes.Ldsfld, listField); // Load the value of the "dictionary" field onto the stack
         processor.Emit(OpCodes.Ldarg_0); // Load the first argument (index) onto the stack
-        processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(List<string>).GetMethod("get_Item"))); // Call the "get_Item" method of the list
-        processor.Emit(OpCodes.Stloc_0); // Store the retrieved string in the local variable at index 0 (string)
+        processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(Dictionary<int, (string, string, string)>).GetMethod("get_Item"))); // Call the "get_Item" method of the dictionary
+        processor.Emit(OpCodes.Stloc_2); // Store the retrieved tuple in the local variable at index 2
 
         // Decrypt the string
         var decryptStringType = assembly.MainModule.ImportReference(Type.GetType("Embed.EmbeddedStringEncryption"));
         var decryptStringMethod = decryptStringType.Resolve().Methods.First(m => m.Name == "DecryptString" && m.Parameters.Count == 3);
-        processor.Emit(OpCodes.Ldloc_0); // Load the encrypted string onto the stack
-        processor.Emit(OpCodes.Ldstr, "keyString"); // Load the key string onto the stack
-        processor.Emit(OpCodes.Ldstr, "ivString"); // Load the IV string onto the stack
+        processor.Emit(OpCodes.Ldloca, 2); // Load the address of the tuple onto the stack
+        processor.Emit(OpCodes.Ldfld, assembly.MainModule.ImportReference(typeof(ValueTuple<string, string, string>).GetField("Item1"))); // Load the encrypted string from the tuple
+        processor.Emit(OpCodes.Ldloca, 2); // Load the address of the tuple onto the stack
+        processor.Emit(OpCodes.Ldfld, assembly.MainModule.ImportReference(typeof(ValueTuple<string, string, string>).GetField("Item2"))); // Load the key string from the tuple
+        processor.Emit(OpCodes.Ldloca, 2); // Load the address of the tuple onto the stack
+        processor.Emit(OpCodes.Ldfld, assembly.MainModule.ImportReference(typeof(ValueTuple<string, string, string>).GetField("Item3"))); // Load the IV string from the tuple
         processor.Emit(OpCodes.Call, assembly.MainModule.ImportReference(decryptStringMethod)); // Call the "DecryptString" method
         processor.Emit(OpCodes.Stloc_0); // Store the decrypted string in the local variable at index 0 (string)
 
@@ -247,8 +260,10 @@ public static class StringEncryption
         processor.Emit(OpCodes.Ret); // Return the value on the stack
 
         // Replace placeholder with Brtrue_S
-        processor.Replace(brtrueInstruction, processor.Create(OpCodes.Brtrue_S, instructions[5])); // Replace the placeholder with a conditional branch instruction (places StringEncryption.Initialize(); inside the if statmnt)
+        processor.Replace(brtrueInstruction, processor.Create(OpCodes.Brtrue_S, instructions[5])); // Replace the placeholder with a conditional branch instruction (places StringEncryption.Initialize(); inside the if statement)
     }
+
+
     private static void FinalizeHandler(AssemblyDefinition assembly)
     {
         // Get the IL processor for the "Initialize" method's body
@@ -259,32 +274,30 @@ public static class StringEncryption
         // Load the count of FoundStrings onto the stack
         processor.Emit(OpCodes.Ldc_I4, FoundStrings.Count);
 
-        // Create a new List<string> instance with the specified capacity
-        processor.Emit(OpCodes.Newobj, assembly.MainModule.ImportReference(typeof(List<string>).GetConstructors()[1]));
+        // Create a new Dictionary<int, (string, string, string)> instance with the specified capacity
+        var dictionaryCtor = typeof(Dictionary<int, (string, string, string)>).GetConstructor(new[] { typeof(int) });
+        processor.Emit(OpCodes.Newobj, assembly.MainModule.ImportReference(dictionaryCtor));
 
-        // Store the new List<string> instance in the static field "list"
+        // Store the new Dictionary<int, (string, string, string)> instance in the static field "dictionary"
         processor.Emit(OpCodes.Stsfld, listField);
 
         // Iterate over each string in FoundStrings
-        foreach (var str in FoundStrings)
+        for (int i = 0; i < FoundStrings.Count; i++)
         {
+            var str = FoundStrings[i];
+
             // Encrypt the string and get the encrypted string, key string, and IV string
             var (encryptedString, keyString, ivString) = EncryptString(str);
 
-            // Add the encrypted string to the list
-            processor.Emit(OpCodes.Ldsfld, listField); // Load the list field onto the stack
+            // Add the encrypted string, key string, and IV string to the dictionary
+            processor.Emit(OpCodes.Ldsfld, listField); // Load the dictionary field onto the stack
+            processor.Emit(OpCodes.Ldc_I4, i); // Load the index onto the stack
             processor.Emit(OpCodes.Ldstr, encryptedString); // Load the encrypted string onto the stack
-            processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(List<string>).GetMethod("Add"))); // Call the "Add" method of the list
-
-            // Add the key string to the list
-            processor.Emit(OpCodes.Ldsfld, listField); // Load the list field onto the stack
             processor.Emit(OpCodes.Ldstr, keyString); // Load the key string onto the stack
-            processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(List<string>).GetMethod("Add"))); // Call the "Add" method of the list
-
-            // Add the IV string to the list
-            processor.Emit(OpCodes.Ldsfld, listField); // Load the list field onto the stack
             processor.Emit(OpCodes.Ldstr, ivString); // Load the IV string onto the stack
-            processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(List<string>).GetMethod("Add"))); // Call the "Add" method of the list
+            var tupleCtor = typeof(ValueTuple<string, string, string>).GetConstructor(new[] { typeof(string), typeof(string), typeof(string) });
+            processor.Emit(OpCodes.Newobj, assembly.MainModule.ImportReference(tupleCtor)); // Create a new tuple with the encrypted string, key string, and IV string
+            processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(Dictionary<int, (string, string, string)>).GetMethod("Add"))); // Call the "Add" method of the dictionary
         }
 
         // Set the "initialized" field to true
@@ -297,6 +310,7 @@ public static class StringEncryption
         // Add the type to the assembly's module types
         assembly.MainModule.Types.Add(typeHandle);
     }
+
     public static void EncryptStrings(AssemblyDefinition assembly)
     {
         var types = assembly.MainModule.Types;
