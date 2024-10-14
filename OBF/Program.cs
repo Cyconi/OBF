@@ -37,20 +37,23 @@ internal class Program
     {
         Console.WriteLine($"Obfuscating DLL: {dllPath}");
 
+        // Create the resolver and add the dependency search path
         var resolver = new DefaultAssemblyResolver();
+        resolver.AddSearchDirectory(Path.Combine(Path.GetDirectoryName(dllPath), "..", "deps"));
         resolver.AddSearchDirectory(Path.GetDirectoryName(dllPath));
         var readerParameters = new ReaderParameters { AssemblyResolver = resolver };
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
         Renaming.OriginalAssembly = assembly;
 
+
         //AntiDebug.InitAntiDebug(assembly);
 
         StringEncryption.EncryptStrings(assembly); // has issues with some methods (nested?)
 
-        //CodeInjection.InjectCode(assembly); // works, want to add class injection
-        //ControlFlow.CtrlFlow(assembly); // need work
+        CodeInjection.InjectCode(assembly); // works, want to add class injection
+        ControlFlow.CtrlFlow(assembly); // need work
 
-        //Renaming.RenameAssembly(assembly); // works, not sure i can do much more
+        Renaming.RenameAssembly(assembly); // works, not sure i can do much more
 
         string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory).FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
         string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Hexed\Settings\UnityLoader\VRChat\Cheats\" + Path.GetFileName(newDllPath);

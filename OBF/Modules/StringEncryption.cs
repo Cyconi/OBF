@@ -19,18 +19,18 @@ public static class StringEncryption
             var module = assembly.MainModule;
 
             // Create the encryption class
-            var encryptionClass = CreateEncryptionClass(module);
+            typeHandle = CreateEncryptionClass(module);
 
             // Create the OnDecrypt method and add it to the encryption class
             var onDecryptMethodDef = CreateOnDecryptMethod(module);
-            encryptionClass.Methods.Add(onDecryptMethodDef);
+            typeHandle.Methods.Add(onDecryptMethodDef);
 
             // Create the DecryptString method and add it to the encryption class
             var decryptMethod = CreateDecryptStringMethod(module, onDecryptMethodDef);
-            encryptionClass.Methods.Add(decryptMethod);
+            typeHandle.Methods.Add(decryptMethod);
 
             // Add the encryption class to the module's types
-            module.Types.Add(encryptionClass);
+            module.Types.Add(typeHandle);
 
             // Print a success message
             Console.WriteLine("Decryption methods added successfully.");
@@ -42,6 +42,7 @@ public static class StringEncryption
             throw;
         }
     }
+
     private static TypeDefinition CreateEncryptionClass(ModuleDefinition module)
     {
         // Create a new type definition for the encryption class
@@ -102,7 +103,7 @@ public static class StringEncryption
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldarg_0));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldlen));
         ilProcessor.Append(ilProcessor.Create(OpCodes.Conv_I4));
-        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("Write", new[] { typeof(byte[]), typeof(int), typeof(int) }))));
+        ilProcessor.Append(ilProcessor.Create(OpCodes.Callvirt, module.ImportReference(typeof(CryptoStream).GetMethod("Write", [typeof(byte[]), typeof(int), typeof(int)]))));
 
         // Flush the final block of the CryptoStream
         ilProcessor.Append(ilProcessor.Create(OpCodes.Ldloc_2));
@@ -181,7 +182,7 @@ public static class StringEncryption
     private static void AddHandler(AssemblyDefinition assembly)
     {
         // Define a new type called "StringEncryption" with various attributes
-        typeHandle = new TypeDefinition("Embed", "StringEncryption", TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract, assembly.MainModule.ImportReference(typeof(object)));
+        typeHandle ??= CreateEncryptionClass(assembly.MainModule);
 
         // Define a private static boolean field named "initialized"
         initField = new FieldDefinition("initialized", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(bool)));
@@ -245,8 +246,8 @@ public static class StringEncryption
         processor.Emit(OpCodes.Stloc_2); // Store the retrieved tuple in the local variable at index 2
 
         // Decrypt the string
-        var decryptStringType = assembly.MainModule.ImportReference(Type.GetType("Embed.EmbeddedStringEncryption"));
-        var decryptStringMethod = decryptStringType.Resolve().Methods.First(m => m.Name == "DecryptString" && m.Parameters.Count == 3);
+        //var decryptStringType = assembly.MainModule.ImportReference(Type.GetType("Embed.EmbeddedStringEncryption"));
+        var decryptStringMethod = typeHandle.Resolve().Methods.First(m => m.Name == "DecryptString" && m.Parameters.Count == 3);
         processor.Emit(OpCodes.Ldloca, 2); // Load the address of the tuple onto the stack
         processor.Emit(OpCodes.Ldfld, assembly.MainModule.ImportReference(typeof(ValueTuple<string, string, string>).GetField("Item1"))); // Load the encrypted string from the tuple
         processor.Emit(OpCodes.Ldloca, 2); // Load the address of the tuple onto the stack
@@ -265,6 +266,12 @@ public static class StringEncryption
     }
     private static void FinalizeHandler(AssemblyDefinition assembly)
     {
+        // Find the existing EmbeddedStringEncryption type
+        var typeHandle = assembly.MainModule.Types.First(t => t.Name == "EmbeddedStringEncryption");
+
+        if (typeHandle == null)
+            throw new InvalidOperationException("Type 'Embed.EmbeddedStringEncryption' not found in assembly");
+
         // Get the IL processor for the "Initialize" method's body
         var processor = initMethod?.Body.GetILProcessor();
         if (processor == null)
@@ -274,7 +281,7 @@ public static class StringEncryption
         processor.Emit(OpCodes.Ldc_I4, FoundStrings.Count);
 
         // Create a new Dictionary<int, (string, string, string)> instance with the specified capacity
-        var dictionaryCtor = typeof(Dictionary<int, (string, string, string)>).GetConstructor(new[] { typeof(int) });
+        var dictionaryCtor = typeof(Dictionary<int, (string, string, string)>).GetConstructor(new Type[] { typeof(int) });
         processor.Emit(OpCodes.Newobj, assembly.MainModule.ImportReference(dictionaryCtor));
 
         // Store the new Dictionary<int, (string, string, string)> instance in the static field "dictionary"
@@ -284,7 +291,6 @@ public static class StringEncryption
         for (int i = 0; i < FoundStrings.Count; i++)
         {
             var str = FoundStrings[i];
-
             // Encrypt the string and get the encrypted string, key string, and IV string
             var (encryptedString, keyString, ivString) = EncryptString(str);
 
@@ -294,7 +300,7 @@ public static class StringEncryption
             processor.Emit(OpCodes.Ldstr, encryptedString); // Load the encrypted string onto the stack
             processor.Emit(OpCodes.Ldstr, keyString); // Load the key string onto the stack
             processor.Emit(OpCodes.Ldstr, ivString); // Load the IV string onto the stack
-            var tupleCtor = typeof(ValueTuple<string, string, string>).GetConstructor(new[] { typeof(string), typeof(string), typeof(string) });
+            var tupleCtor = typeof(ValueTuple<string, string, string>).GetConstructor(new Type[] { typeof(string), typeof(string), typeof(string) });
             processor.Emit(OpCodes.Newobj, assembly.MainModule.ImportReference(tupleCtor)); // Create a new tuple with the encrypted string, key string, and IV string
             processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(Dictionary<int, (string, string, string)>).GetMethod("Add"))); // Call the "Add" method of the dictionary
         }
@@ -305,9 +311,6 @@ public static class StringEncryption
 
         // Return from the method
         processor.Emit(OpCodes.Ret); // Return from the method
-
-        // Add the type to the assembly's module types
-        assembly.MainModule.Types.Add(typeHandle);
     }
     #endregion
     public static void EncryptStrings(AssemblyDefinition assembly)
@@ -317,27 +320,34 @@ public static class StringEncryption
         AddDecryptionMethod(assembly); // works
         AddHandler(assembly); // works
 
-        foreach (var type in types)        
-            ProcessType(type);        
+        foreach (var type in types)
+            ProcessType(type);
 
         FinalizeHandler(assembly);
     }
+
     private static void ProcessType(TypeDefinition type)
     {
-        if (!type.HasMethods)
+        if (!type.HasMethods || type.Name.Contains("WaitForConnection") || type.Name.Contains("Download"))
             return;
 
         foreach (var method in type.Methods)
+        {
+            if (method.Name.Contains("WaitForConnection") || type.Name.Contains("Download"))
+                continue;
+
             ProcessMethod(method);
+        }
 
         foreach (var nestedType in type.NestedTypes)
-            ProcessType(nestedType); // Process nested types recursively
+            ProcessType(nestedType);
     }
+
     private static void ProcessMethod(MethodDefinition method)
     {
         // Check if the method has a body (i.e., it contains IL code)
         if (!method.HasBody)
-            return; // If the method doesn't have a body, exit the function
+            return;
 
         // Get the IL processor for the method's body
         var processor = method.Body.GetILProcessor();
@@ -345,8 +355,8 @@ public static class StringEncryption
         // Create a dictionary to store instructions to be replaced and their corresponding indices in FoundStrings
         var instructionsToReplace = new Dictionary<Instruction, int>();
 
-        // Create a dictionary to store leave instructions and their targets
-        var leaveInstructions = new Dictionary<Instruction, Instruction>();
+        // Create a dictionary to store pointer instructions and their targets
+        var pointerInstructions = new Dictionary<Instruction, Instruction>();
 
         // Create a list to store endfinally instructions
         var endfinallyInstructions = new List<Instruction>();
@@ -364,15 +374,13 @@ public static class StringEncryption
                 instructionsToReplace.Add(instruction, FoundStrings.Count - 1);
             }
 
-            // Check if the instruction is a leave.s instruction
-            if (instruction.OpCode.Code == Code.Leave_S)
-                leaveInstructions.Add(instruction, (Instruction)instruction.Operand); // Store the leave instruction and its target
-
+            // Check if the instruction has an operand that is an instruction (pointer)
+            if (instruction.Operand is Instruction targetInstruction)
+                pointerInstructions.Add(instruction, targetInstruction);
 
             // Check if the instruction is an endfinally instruction
             if (instruction.OpCode.Code == Code.Endfinally)
                 endfinallyInstructions.Add(instruction); // Add the endfinally instruction to the list
-
         }
 
         // Iterate through each key-value pair in the instructionsToReplace dictionary
@@ -395,11 +403,10 @@ public static class StringEncryption
                 }
             }
 
-            if (isAfterEndfinally)           
+            if (isAfterEndfinally)
                 kvp.Key.Operand = string.Empty; // Set the operand of the original instruction to an empty string
-            else          
+            else
                 processor.Remove(kvp.Key); // Remove the original instruction
-            
 
             // Create a call instruction to the getMethod
             var callInstruction = processor.Create(OpCodes.Call, getMethod);
@@ -407,13 +414,13 @@ public static class StringEncryption
             // Insert the call instruction after the ldc.i4 instruction
             processor.InsertAfter(ldcInstruction, callInstruction);
 
-            // Update the target of any leave instructions pointing to the replaced instruction
-            foreach (var leaveInstruction in leaveInstructions)
-                if (leaveInstruction.Value == kvp.Key)
-                    leaveInstruction.Key.Operand = ldcInstruction;
-
+            // Update the target of any pointer instructions pointing to the replaced instruction
+            foreach (var pointerInstruction in pointerInstructions)
+                if (pointerInstruction.Value == kvp.Key)
+                    pointerInstruction.Key.Operand = ldcInstruction;
         }
     }
+
     private static (string encryptedString, string keyString, string ivString) EncryptString(string originalString)
     {
         byte[] originalBytes = Encoding.UTF8.GetBytes(originalString);

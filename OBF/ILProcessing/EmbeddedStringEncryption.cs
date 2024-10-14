@@ -1,4 +1,4 @@
-﻿using Mono.Cecil.Cil;
+﻿/*using Mono.Cecil.Cil;
 using Mono.Cecil;
 using System;
 using System.Collections.Generic;
@@ -64,3 +64,4 @@ public static class EmbeddedStringEncryption
         return Encoding.UTF8.GetString(array4);
     }
 }
+*/

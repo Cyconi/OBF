@@ -14,57 +14,6 @@ public static class Renaming
 {
     private static readonly Random random = new();
     internal static AssemblyDefinition? OriginalAssembly { get; set; }
-    /*internal static void RenameAssembly(AssemblyDefinition assembly)
-    {
-        foreach (var module in assembly.Modules)
-            foreach (var type in module.Types)
-                if (!string.IsNullOrEmpty(type.Namespace))
-                    type.Namespace = GenerateUniqueName(type.Namespace);
-
-        foreach (TypeDefinition type in assembly.MainModule.Types)
-        {
-            if ((type.Name.Equals("AppStart") || type.Name.Equals("Client")) && type.IsPublic)
-                type.Name = GenerateUniqueName(type.Name);
-
-            if (type.IsEnum || type.IsPublic)
-                continue;
-
-            type.Name = GenerateUniqueName(type.Name);
-
-            foreach (MethodDefinition field in type.Methods)
-            {
-                if (!field.HasBody || field.IsVirtual || field.DeclaringType != type)
-                    continue;
-
-                if (!field.IsConstructor && !field.IsSpecialName)
-                    field.Name = GenerateUniqueName(field.Name);
-
-                foreach (var gen in field.GenericParameters)
-                    gen.Name = GenerateUniqueName(gen.Name);
-
-                foreach (ParameterDefinition parameter in field.Parameters)
-                    parameter.Name = GenerateUniqueName(parameter.Name);
-            }
-
-            foreach (PropertyDefinition field in type.Properties)
-            {
-                if (field.IsSpecialName || field.DeclaringType != type)
-                    continue;
-
-                field.Name = GenerateUniqueName(field.Name);
-
-                if (field.GetMethod != null && field.GetMethod.DeclaringType == type)
-                    field.GetMethod.Name = GenerateUniqueName(field.GetMethod.Name);
-
-                if (field.SetMethod != null && field.SetMethod.DeclaringType == type)
-                    field.SetMethod.Name = GenerateUniqueName(field.SetMethod.Name);
-            }
-
-            foreach (FieldDefinition field in type.Fields)
-                if (!field.HasCustomAttributes && field.DeclaringType == type)
-                    field.Name = GenerateUniqueName(field.Name);
-        }
-    }*/
     internal static void RenameAssembly(AssemblyDefinition assembly)
     {
         ClearMetadata(assembly);
@@ -76,14 +25,14 @@ public static class Renaming
 
         foreach (TypeDefinition type in assembly.MainModule.Types)
         {
-            if ((type.Name.Equals("AppStart") || type.Name.Equals("Client") || type.Name.Equals("AvatarObject")) && type.IsPublic)
+            if ((type.Name.Equals("AppStart") || type.Name.Equals("Client") || (type.Name.Equals("AvatarObject")) && type.IsPublic))
                 type.Name = GenerateUniqueName(type.Name);
 
             if (type.IsEnum || type.IsPublic)
                 continue;
 
-            //type.CustomAttributes.Clear();
-            //type.Name = GenerateUniqueName(type.Name);
+            type.CustomAttributes.Clear();
+            type.Name = GenerateUniqueName(type.Name);
 
             foreach (MethodDefinition method in type.Methods)
             {
