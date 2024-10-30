@@ -12,26 +12,37 @@ internal class Program
 {
     public static void Main(string[] args)
     {
-        Console.WriteLine("Enter the name of the DLL:");
-        var dll = Console.ReadLine();
-        if (dll == null)
-            return;
+        string dll;
 
-        // Ensure the DLL name ends with .dll
-        if (!dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-            dll += ".dll";
-
-        var obfDirectory = Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, "OBF");
-        var dllFilePath = Directory.GetFiles(obfDirectory, dll).FirstOrDefault();
-
-        if (dllFilePath != null)
-        {
-            Console.WriteLine($"Found DLL: {dllFilePath}");
-            Obfuscate(dllFilePath);
-        }
+        if (args.Length > 0 && File.Exists(args[0]))
+            dll = args[0];
         else
-            Console.WriteLine("No DLL file found in the OBF directory with the given name.");
-        
+        {
+            Console.WriteLine("Enter the name of the DLL:");
+            dll = Console.ReadLine();
+            if (dll == null)
+                return;
+
+            // Ensure the DLL name ends with .dll
+            if (!dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                dll += ".dll";
+
+            var obfDirectory = Path.Combine(Directory.GetParent(Environment.CurrentDirectory)?.FullName, "OBF");
+            var dllFilePath = Directory.GetFiles(obfDirectory, dll).FirstOrDefault();
+            if (dllFilePath != null)
+            {
+                Console.WriteLine($"Found DLL: {dllFilePath}");
+                Obfuscate(dllFilePath);
+            }
+            else
+                Console.WriteLine("No DLL file found in the OBF directory with the given name.");
+        }
+
+        if (dll != null && File.Exists(dll))
+        {
+            Console.WriteLine($"Found DLL: {dll}");
+            Obfuscate(dll);
+        }
     }
     public static void Obfuscate(string dllPath)
     {
@@ -45,13 +56,12 @@ internal class Program
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
         Renaming.OriginalAssembly = assembly;
 
-
         //AntiDebug.InitAntiDebug(assembly);
 
-        StringEncryption.EncryptStrings(assembly); // has issues with some methods (nested?)
+        //StringEncryption.EncryptStrings(assembly); // has issues with some methods (nested?)
 
-        CodeInjection.InjectCode(assembly); // works, want to add class injection
-        ControlFlow.CtrlFlow(assembly); // need work
+        CodeInjection.InjectMethods(assembly); // works, want to add class injection
+        CodeInjection.JunkWithMethodCalls(assembly); // need work
 
         Renaming.RenameAssembly(assembly); // works, not sure i can do much more
 

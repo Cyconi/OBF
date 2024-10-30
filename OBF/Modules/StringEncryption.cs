@@ -328,12 +328,12 @@ public static class StringEncryption
 
     private static void ProcessType(TypeDefinition type)
     {
-        if (!type.HasMethods || type.Name.Contains("WaitForConnection") || type.Name.Contains("Download"))
+        if (!type.HasMethods || type.Name.Contains("WaitForConnection") || type.Name.Contains("Download") || type.Name.Contains("Init"))
             return;
 
         foreach (var method in type.Methods)
         {
-            if (method.Name.Contains("WaitForConnection") || type.Name.Contains("Download"))
+            if (method.Name.Contains("WaitForConnection") || type.Name.Contains("Download") || type.Name.Contains("Init"))
                 continue;
 
             ProcessMethod(method);

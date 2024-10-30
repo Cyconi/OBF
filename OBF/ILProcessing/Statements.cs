@@ -80,9 +80,9 @@ namespace OBF.ILProcessing
             var endIf3 = ilProcessor.Create(OpCodes.Nop);
 
             // Create junk methods
-            var junkMethod1 = ControlFlow.CreateJunkMethod(method.Module, false);
-            var junkMethod2 = ControlFlow.CreateJunkMethod(method.Module, false);
-            var junkMethod3 = ControlFlow.CreateJunkMethod(method.Module, false);
+            var junkMethod1 = CodeInjection.CreateJunkMethod(method.Module, false);
+            var junkMethod2 = CodeInjection.CreateJunkMethod(method.Module, false);
+            var junkMethod3 = CodeInjection.CreateJunkMethod(method.Module, false);
 
             // Insert dummy if-else logic with conditions
             ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4_1)); // Load constant 1

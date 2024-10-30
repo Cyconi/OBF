@@ -31,8 +31,8 @@ public static class Renaming
             if (type.IsEnum || type.IsPublic)
                 continue;
 
-            type.CustomAttributes.Clear();
-            type.Name = GenerateUniqueName(type.Name);
+            //type.CustomAttributes.Clear();
+            //type.Name = GenerateUniqueName(type.Name);
 
             foreach (MethodDefinition method in type.Methods)
             {
