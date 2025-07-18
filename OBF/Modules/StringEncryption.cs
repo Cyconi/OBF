@@ -43,19 +43,14 @@ public static class StringEncryption
         }
     }
 
-    private static TypeDefinition CreateEncryptionClass(ModuleDefinition module)
-    {
-        // Create a new type definition for the encryption class
-        return new TypeDefinition("Embed", "EmbeddedStringEncryption",
-            TypeAttributes.NotPublic | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed,
-            module.TypeSystem.Object);
-    }
+    // Create a new type definition for the encryption class
+    private static TypeDefinition CreateEncryptionClass(ModuleDefinition module) => new("Embed", "EmbeddedStringEncryption", TypeAttributes.NotPublic | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed, module.TypeSystem.Object);
+    
     private static MethodDefinition CreateOnDecryptMethod(ModuleDefinition module)
     {
         // Create a new method definition for the OnDecrypt method
-        var method = new MethodDefinition("OnDecrypt",
-            MethodAttributes.Public | MethodAttributes.Static,
-            module.TypeSystem.Byte.MakeArrayType());
+        var method = new MethodDefinition("OnDecrypt", MethodAttributes.Public | MethodAttributes.Static, module.TypeSystem.Byte.MakeArrayType());
+        method.Body.InitLocals = true;
 
         // Add parameters to the OnDecrypt method
         method.Parameters.Add(new ParameterDefinition("bytes", ParameterAttributes.None, module.TypeSystem.Byte.MakeArrayType()));
@@ -121,9 +116,8 @@ public static class StringEncryption
     private static MethodDefinition CreateDecryptStringMethod(ModuleDefinition module, MethodReference onDecryptMethod)
     {
         // Create a new method definition for the DecryptString method
-        var method = new MethodDefinition("DecryptString",
-            MethodAttributes.Public | MethodAttributes.Static,
-            module.TypeSystem.String);
+        var method = new MethodDefinition("DecryptString", MethodAttributes.Public | MethodAttributes.Static, module.TypeSystem.String);
+        method.Body.InitLocals = true;
 
         // Add parameters to the DecryptString method
         method.Parameters.Add(new ParameterDefinition("encryptedText", ParameterAttributes.None, module.TypeSystem.String));
@@ -188,14 +182,7 @@ public static class StringEncryption
         initField = new FieldDefinition("initialized", FieldAttributes.Private | FieldAttributes.Static, assembly.MainModule.ImportReference(typeof(bool)));
 
         // Define a private static field named "dictionary" of type Dictionary<int, (string, string, string)>
-        var dictionaryType = assembly.MainModule.ImportReference(typeof(Dictionary<,>))
-            .MakeGenericInstanceType(assembly.MainModule.TypeSystem.Int32,
-                assembly.MainModule.ImportReference(typeof(ValueTuple<,,>))
-            .MakeGenericInstanceType(assembly.MainModule.TypeSystem.String, 
-                assembly.MainModule.TypeSystem.String,
-                assembly.MainModule.TypeSystem.String));
-
-        var dictionaryField = new FieldDefinition("dictionary", FieldAttributes.Private | FieldAttributes.Static, dictionaryType);
+        var dictionaryType = assembly.MainModule.ImportReference(typeof(Dictionary<,>)).MakeGenericInstanceType(assembly.MainModule.TypeSystem.Int32, assembly.MainModule.ImportReference(typeof(ValueTuple<,,>)).MakeGenericInstanceType(assembly.MainModule.TypeSystem.String, assembly.MainModule.TypeSystem.String,assembly.MainModule.TypeSystem.String));
 
         listField = new FieldDefinition("dictionary", FieldAttributes.Private | FieldAttributes.Static, dictionaryType);
 
@@ -242,7 +229,10 @@ public static class StringEncryption
         // Retrieve the tuple from the dictionary
         processor.Emit(OpCodes.Ldsfld, listField); // Load the value of the "dictionary" field onto the stack
         processor.Emit(OpCodes.Ldarg_0); // Load the first argument (index) onto the stack
+        var dictType = assembly.MainModule.ImportReference(typeof(Dictionary<,>)).MakeGenericInstanceType(assembly.MainModule.TypeSystem.Int32, assembly.MainModule.ImportReference(typeof(ValueTuple<string, string, string>)));
+
         processor.Emit(OpCodes.Callvirt, assembly.MainModule.ImportReference(typeof(Dictionary<int, (string, string, string)>).GetMethod("get_Item"))); // Call the "get_Item" method of the dictionary
+
         processor.Emit(OpCodes.Stloc_2); // Store the retrieved tuple in the local variable at index 2
 
         // Decrypt the string
@@ -267,10 +257,7 @@ public static class StringEncryption
     private static void FinalizeHandler(AssemblyDefinition assembly)
     {
         // Find the existing EmbeddedStringEncryption type
-        var typeHandle = assembly.MainModule.Types.First(t => t.Name == "EmbeddedStringEncryption");
-
-        if (typeHandle == null)
-            throw new InvalidOperationException("Type 'Embed.EmbeddedStringEncryption' not found in assembly");
+        var typeHandle = assembly.MainModule.Types.First(t => t.Name == "EmbeddedStringEncryption") ?? throw new InvalidOperationException("Type 'Embed.EmbeddedStringEncryption' not found in assembly");
 
         // Get the IL processor for the "Initialize" method's body
         var processor = initMethod?.Body.GetILProcessor();
@@ -328,26 +315,153 @@ public static class StringEncryption
 
     private static void ProcessType(TypeDefinition type)
     {
-        if (!type.HasMethods || type.Name.Contains("WaitForConnection") || type.Name.Contains("Download") || type.Name.Contains("Init"))
+        if (!type.HasMethods || type.Name.Contains("WaitForConnection") || type.Name.Contains("Download"))
             return;
 
-        foreach (var method in type.Methods)
-        {
-            if (method.Name.Contains("WaitForConnection") || type.Name.Contains("Download") || type.Name.Contains("Init"))
-                continue;
-
-            ProcessMethod(method);
-        }
+        foreach (var method in type.Methods)        
+            if (!method.Name.Contains("WaitForConnection") && !type.Name.Contains("Download"))
+                ProcessMethod(method);
 
         foreach (var nestedType in type.NestedTypes)
             ProcessType(nestedType);
     }
+    /*private static void ProcessMethod(MethodDefinition method)
+    {
+        if (!method.HasBody || method.Body.ExceptionHandlers.Any(h => h.HandlerType == ExceptionHandlerType.Finally && h.TryStart != null))
+            return;
+
+        var processor = method.Body.GetILProcessor();
+        var stringIndexMap = new Dictionary<string, int>();
+        var instructionsToReplace = new Dictionary<Instruction, int>();
+        var pointerInstructions = new Dictionary<Instruction, Instruction>();
+        var endfinallyInstructions = new List<Instruction>();
+
+        // Collect branch targets early
+        var branchTargets = method.Body.Instructions.Where(i => i.Operand is Instruction).ToDictionary(i => i, i => i.Operand as Instruction);
+
+        var stringToInstructions = new Dictionary<string, List<Instruction>>();
+
+        foreach (var instr in method.Body.Instructions)
+        {
+            if (instr.OpCode == OpCodes.Ldstr && instr.Operand is string str)
+            {
+                if (!stringToInstructions.ContainsKey(str))
+                    stringToInstructions[str] = [];
+
+                stringToInstructions[str].Add(instr);
+            }
+        }
+
+        // Identify ldstr and pointer instructions
+        foreach (var instr in method.Body.Instructions)
+        {
+            if (instr.OpCode == OpCodes.Ldstr && instr.Operand is string str)
+            {
+                if (!stringIndexMap.ContainsKey(str))
+                {
+                    FoundStrings.Add(str);
+                    stringIndexMap[str] = FoundStrings.Count - 1;
+                }
+                instructionsToReplace[instr] = stringIndexMap[str];
+            }
+
+            if (instr.Operand is Instruction targetInstr)
+                pointerInstructions[instr] = targetInstr;
+
+            if (instr.OpCode == OpCodes.Endfinally)
+                endfinallyInstructions.Add(instr);
+        }
+
+        // Replace string loads with encrypted loader calls
+        var insertedLdcMap = new Dictionary<string, Instruction>();
+
+        foreach (var kvp in instructionsToReplace)
+        {
+            var orig = kvp.Key;
+            var str = orig.Operand as string;
+            var index = kvp.Value;
+
+            Instruction ldc;
+
+            if (!insertedLdcMap.ContainsKey(str))
+            {
+                ldc = processor.Create(OpCodes.Ldc_I4, index);
+                var call = processor.Create(OpCodes.Call, getMethod);
+
+                processor.InsertAfter(orig, ldc);
+                processor.InsertAfter(ldc, call);
+
+                insertedLdcMap[str] = ldc;
+
+                if (endfinallyInstructions.Any(e => method.Body.Instructions.IndexOf(e) < method.Body.Instructions.IndexOf(orig)))
+                    orig.Operand = string.Empty;
+                else
+                    processor.Remove(orig);
+            }
+            else
+            {
+                ldc = insertedLdcMap[str];
+                processor.Remove(orig);
+            }
+
+            foreach (var instr in method.Body.Instructions)
+                if (instr.Operand is Instruction target && target == orig)
+                    instr.Operand = ldc;
+        }
+
+
+        // Avoid aggressive stack modification just before 'ret'
+        var instructions = method.Body.Instructions;
+        for (int i = 0; i < instructions.Count - 1; i++)
+        {
+            var current = instructions[i];
+            var next = instructions[i + 1];
+
+            if (next.OpCode == OpCodes.Ret && current.OpCode != OpCodes.Call && current.OpCode != OpCodes.Ldfld)
+                if (current.OpCode == OpCodes.Ldstr || current.OpCode == OpCodes.Ldc_I4 || current.OpCode == OpCodes.Ldloc)
+                    processor.Remove(current); // clean-up safe stack pushes
+            
+        }
+
+        // Anchor logic for redirecting invalid targets
+        var stloc2 = instructions.LastOrDefault(i => i.OpCode == OpCodes.Stloc && i.Operand == method.Body.Variables[2]);
+
+        if (stloc2 != null)
+        {
+            var anchor = processor.Create(OpCodes.Nop);
+            processor.InsertAfter(stloc2, anchor);
+
+            foreach (var instr in method.Body.Instructions)
+            {
+                if (instr.Operand is Instruction target && !method.Body.Instructions.Contains(target))
+                    instr.Operand = anchor;
+
+                if (instr.Operand is Instruction retTarget && retTarget.OpCode == OpCodes.Ret)
+                    instr.Operand = anchor;
+            }
+        }
+
+        foreach (var kvp in branchTargets)
+        {
+            var branch = kvp.Key;
+            var target = kvp.Value;
+
+            if (!method.Body.Instructions.Contains(target))
+            {
+                var fallback = method.Body.Instructions.FirstOrDefault(i => i.OpCode == OpCodes.Ldloc && i.Operand == method.Body.Variables[2]) ?? method.Body.Instructions.FirstOrDefault(i => i.OpCode == OpCodes.Ret) ?? method.Body.Instructions.Last();
+
+                branch.Operand = fallback;
+            }
+        }
+    }*/
 
     private static void ProcessMethod(MethodDefinition method)
     {
         // Check if the method has a body (i.e., it contains IL code)
-        if (!method.HasBody)
+        if (!method.HasBody || method.Body.ExceptionHandlers.Any(h => h.HandlerType == ExceptionHandlerType.Finally && h.TryStart != null))
             return;
+
+        var stringIndexMap = new Dictionary<string, int>();
 
         // Get the IL processor for the method's body
         var processor = method.Body.GetILProcessor();
@@ -361,17 +475,23 @@ public static class StringEncryption
         // Create a list to store endfinally instructions
         var endfinallyInstructions = new List<Instruction>();
 
+        var branchTargets = new Dictionary<Instruction, Instruction>();
+        foreach (var instr in method.Body.Instructions)
+            if ((instr.OpCode.FlowControl == FlowControl.Branch || instr.OpCode.FlowControl == FlowControl.Cond_Branch) && instr.Operand is Instruction target)
+                branchTargets[instr] = target;
+
         // Iterate through each instruction in the method's body
         foreach (var instruction in method.Body.Instructions)
         {
-            // Check if the instruction is a load string (ldstr) instruction and its operand is a string
-            if (instruction.OpCode.Code == Code.Ldstr && instruction.Operand is string)
+            if (instruction.OpCode.Code == Code.Ldstr && instruction.Operand is string str)
             {
-                // Add the string operand to the FoundStrings list
-                FoundStrings.Add(instruction.Operand as string);
+                if (!stringIndexMap.ContainsKey(str))
+                {
+                    FoundStrings.Add(str);
+                    stringIndexMap[str] = FoundStrings.Count - 1;
+                }
 
-                // Add the instruction and its index in FoundStrings to the dictionary
-                instructionsToReplace.Add(instruction, FoundStrings.Count - 1);
+                instructionsToReplace.Add(instruction, stringIndexMap[str]);
             }
 
             // Check if the instruction has an operand that is an instruction (pointer)
@@ -404,7 +524,7 @@ public static class StringEncryption
             }
 
             if (isAfterEndfinally)
-                kvp.Key.Operand = string.Empty; // Set the operand of the original instruction to an empty string
+                kvp.Key.Operand = string.Empty;
             else
                 processor.Remove(kvp.Key); // Remove the original instruction
 
@@ -418,6 +538,21 @@ public static class StringEncryption
             foreach (var pointerInstruction in pointerInstructions)
                 if (pointerInstruction.Value == kvp.Key)
                     pointerInstruction.Key.Operand = ldcInstruction;
+
+            foreach (var instr in method.Body.Instructions)
+                if ((instr.OpCode.FlowControl == FlowControl.Branch || instr.OpCode.FlowControl == FlowControl.Cond_Branch))
+                    if (instr.Operand == null || instr.Operand is Instruction target && target == kvp.Key)
+                        instr.Operand = ldcInstruction;
+        }
+
+        var instructions = method.Body.Instructions;
+        for (int i = 0; i < instructions.Count - 1; i++)
+        {
+            var current = instructions[i];
+            var next = instructions[i + 1];
+
+            if (next.OpCode == OpCodes.Ret && (current.OpCode == OpCodes.Ldstr || current.OpCode == OpCodes.Ldc_I4 || current.OpCode == OpCodes.Ldloc))
+                processor.Remove(current); // kills stack imbalance                
         }
     }
 

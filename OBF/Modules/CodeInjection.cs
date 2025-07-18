@@ -43,6 +43,13 @@ namespace OBF.Modules
         }
         public static void RandomizeMethodCalls(MethodDefinition method, TypeDefinition type)
         {
+            // Skip injection for methods with open generic context
+            if (method.HasGenericParameters || method.DeclaringType.HasGenericParameters)
+            {
+                Console.WriteLine($"[CodeInjection] Skipped method {method.FullName} due to open generic context.");
+                return;
+            }
+
             Random random = new();
             var actions = new List<Action>
             {
@@ -55,14 +62,10 @@ namespace OBF.Modules
 
             int numberOfActions = random.Next(1, 3);
 
-            // Call the actions
-            for (int i = 0; i < numberOfActions; i++)
-            {
-                // Select a random action and execute it
-                var randomAction = actions[random.Next(actions.Count)];
-                randomAction();
-            }
+            for (int i = 0; i < numberOfActions; i++)            
+                actions[random.Next(actions.Count)]();            
         }
+
         public static void AddIfOpaquePredicates(MethodDefinition method, TypeDefinition type, bool calledByJunk = false)
         {
             if (!method.HasBody)
@@ -78,6 +81,12 @@ namespace OBF.Modules
             var endLabel = ilProcessor.Create(OpCodes.Nop);
 
             var junkMethod1 = CreateJunkMethod(method.Module, calledByJunk);
+
+            if (junkMethod1 == null)
+            {
+                Console.WriteLine($"[CodeInjection] Skipped if obfuscation injection due to junk method creation failure in {type.Name}.{method.Name}");
+                return;
+            }
 
             // Define a local variable
             var intType = method.Module.TypeSystem.Int32;
@@ -100,7 +109,7 @@ namespace OBF.Modules
             ilProcessor.InsertBefore(firstInstruction, endLabel);
             ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Nop)); // End of method
 
-            Console.WriteLine($"[ControlFlow] Injected if obfuscation into method: {type.Name}.{method.Name}");
+            Console.WriteLine($"[CodeInjection] Injected if obfuscation into method: {type.Name}.{method.Name}");
         }
         public static void AddNestedIf(MethodDefinition method, TypeDefinition type, bool calledByJunk = false)
         {
@@ -118,6 +127,12 @@ namespace OBF.Modules
             var endLabel = ilProcessor.Create(OpCodes.Nop);
 
             var junkMethod1 = CreateJunkMethod(method.Module, calledByJunk);
+
+            if (junkMethod1 == null)
+            {
+                Console.WriteLine($"[CodeInjection] Skipped nested if injection due to junk method creation failure in {type.Name}.{method.Name}");
+                return;
+            }
 
             // Define a local variable
             var intType = method.Module.TypeSystem.Int32;
@@ -152,57 +167,8 @@ namespace OBF.Modules
             ilProcessor.InsertBefore(firstInstruction, endLabel);
             ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Nop)); // End of method
 
-            Console.WriteLine($"[ControlFlow] Injected nested if obfuscation into method: {type.Name}.{method.Name}");
+            Console.WriteLine($"[CodeInjection] Injected nested if obfuscation into method: {type.Name}.{method.Name}");
         }
-        /*public static void AddNestedIfAfter(MethodDefinition method, TypeDefinition type)
-        {
-            if (!method.HasBody || method.ReturnType.IsValueType || method.Name.StartsWith("get_") || method.Name.StartsWith("set_"))
-                return;
-
-                var ilProcessor = method.Body.GetILProcessor();
-            var lastInstruction = method.Body.Instructions.LastOrDefault();
-            if (lastInstruction == null)
-                return;
-
-            var label1 = ilProcessor.Create(OpCodes.Nop);
-            var label2 = ilProcessor.Create(OpCodes.Nop);
-            var label3 = ilProcessor.Create(OpCodes.Nop);
-            var endLabel = ilProcessor.Create(OpCodes.Nop);
-
-            // Define a local variable
-            var intType = method.Module.TypeSystem.Int32;
-            var localVariable = new VariableDefinition(intType);
-            method.Body.Variables.Add(localVariable);
-
-            var caseA = Extensions.IntRng(-100, 100);
-            var caseB = Extensions.IntRng(caseA, caseA + 50);
-            var caseC = Extensions.IntRng(caseB, caseB + 50);
-
-            // Insert at the end of the method
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Br, label1));
-
-            ilProcessor.InsertBefore(lastInstruction, label1);
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldc_I4, caseC));
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Stloc, localVariable));
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldloc, localVariable));
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldc_I4, caseB));
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Blt, label2));
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Br, endLabel));
-
-            ilProcessor.InsertBefore(lastInstruction, label2);
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldloc, localVariable));
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldc_I4, caseA));
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Blt, label3));
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Br, endLabel));
-
-            ilProcessor.InsertBefore(lastInstruction, label3);
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Nop)); // Placeholder for additional logic
-
-            ilProcessor.InsertBefore(lastInstruction, endLabel);
-            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Nop)); // End of method
-
-            Console.WriteLine($"Injected nested if obfuscation into method: {type.Name}.{method.Name}");
-        }*/
         public static void AddSwitchWithNestedIf(MethodDefinition method, TypeDefinition type, bool calledByJunk = false)
         {
             if (!method.HasBody)
@@ -215,9 +181,9 @@ namespace OBF.Modules
 
             var switchLabels = new Instruction[]
             {
-        ilProcessor.Create(OpCodes.Nop), // Case 0
-        ilProcessor.Create(OpCodes.Nop), // Case 1
-        ilProcessor.Create(OpCodes.Nop), // Case 2
+                ilProcessor.Create(OpCodes.Nop), // Case 0
+                ilProcessor.Create(OpCodes.Nop), // Case 1
+                ilProcessor.Create(OpCodes.Nop), // Case 2
             };
             var endLabel = ilProcessor.Create(OpCodes.Nop);
 
@@ -230,6 +196,12 @@ namespace OBF.Modules
             var junkMethod1 = CreateJunkMethod(method.Module, calledByJunk);
             var junkMethod2 = CreateJunkMethod(method.Module, calledByJunk);
             var junkMethod3 = CreateJunkMethod(method.Module, calledByJunk);
+
+            if (junkMethod1 == null || junkMethod2 == null || junkMethod3 == null)
+            {
+                Console.WriteLine($"[CodeInjection] Skipped switch with nested if injection due to junk method creation failure in {type.Name}.{method.Name}");
+                return;
+            }
 
             var switchA = Extensions.IntRng(0, 10);
             var switchB = Extensions.IntRng(3, 10);
@@ -283,8 +255,112 @@ namespace OBF.Modules
             ilProcessor.InsertBefore(firstInstruction, endLabel);
             ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Nop)); // End of method
 
-            Console.WriteLine($"[ControlFlow] Injected switch with nested if statements into method: {type.Name}.{method.Name}");
+            Console.WriteLine($"[CodeInjection] Injected switch with nested if statements into method: {type.Name}.{method.Name}");
         }
+
+        internal static MethodDefinition? CreateJunkMethod(ModuleDefinition module, bool calledByJunk)
+        {
+            var existingClasses = module.Types.Where(t => t.IsClass && !t.IsEnum && !t.IsInterface && !t.IsCompilerGenerated() && !t.IsDelegate()).ToList();
+            // Get a random class from the module
+            var randomClass = existingClasses[Extensions.IntRng(0, existingClasses.Count)];
+
+            if (randomClass.HasGenericParameters)
+            {
+                Console.WriteLine($"[CodeInjection] Skipped junk method injection due to generic class: {randomClass.FullName}");
+                return null;
+            }
+
+            var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, module.TypeSystem.Void);
+            randomClass.Methods.Add(junkMethod);
+            var junkIlProcessor = junkMethod.Body.GetILProcessor();
+
+            // Fill the junk method with random junk code
+            var intType = module.TypeSystem.Int32;
+            var resultVariable = new VariableDefinition(intType);
+            junkMethod.Body.Variables.Add(resultVariable);
+
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Add)); // Add the two constants
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
+            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ret)); // Return the value
+
+            if (calledByJunk)
+            {
+                if (Extensions.IntRng(0, 100) == 50)
+                    AddSwitchWithNestedIf(junkMethod, randomClass, true);
+
+                if (Extensions.IntRng(0, 50) == 25)
+                    AddNestedIf(junkMethod, randomClass, true);
+
+                if (Extensions.IntRng(0, 50) == 25)
+                    AddIfOpaquePredicates(junkMethod, randomClass, true);
+            }
+            else
+            {
+                if (Extensions.IntRng(0, 50) == 25)
+                    AddSwitchWithNestedIf(junkMethod, randomClass, true);
+
+                if (Extensions.IntRng(0, 5) == 5)
+                    AddNestedIf(junkMethod, randomClass, true);
+
+                if (Extensions.IntRng(0, 5) == 5)
+                    AddIfOpaquePredicates(junkMethod, randomClass, true);
+            }
+
+            return junkMethod;
+        }
+
+        /*public static void AddNestedIfAfter(MethodDefinition method, TypeDefinition type)
+        {
+            if (!method.HasBody || method.ReturnType.IsValueType || method.Name.StartsWith("get_") || method.Name.StartsWith("set_"))
+                return;
+
+                var ilProcessor = method.Body.GetILProcessor();
+            var lastInstruction = method.Body.Instructions.LastOrDefault();
+            if (lastInstruction == null)
+                return;
+
+            var label1 = ilProcessor.Create(OpCodes.Nop);
+            var label2 = ilProcessor.Create(OpCodes.Nop);
+            var label3 = ilProcessor.Create(OpCodes.Nop);
+            var endLabel = ilProcessor.Create(OpCodes.Nop);
+
+            // Define a local variable
+            var intType = method.Module.TypeSystem.Int32;
+            var localVariable = new VariableDefinition(intType);
+            method.Body.Variables.Add(localVariable);
+
+            var caseA = Extensions.IntRng(-100, 100);
+            var caseB = Extensions.IntRng(caseA, caseA + 50);
+            var caseC = Extensions.IntRng(caseB, caseB + 50);
+
+            // Insert at the end of the method
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Br, label1));
+
+            ilProcessor.InsertBefore(lastInstruction, label1);
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldc_I4, caseC));
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Stloc, localVariable));
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldloc, localVariable));
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldc_I4, caseB));
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Blt, label2));
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Br, endLabel));
+
+            ilProcessor.InsertBefore(lastInstruction, label2);
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldloc, localVariable));
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Ldc_I4, caseA));
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Blt, label3));
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Br, endLabel));
+
+            ilProcessor.InsertBefore(lastInstruction, label3);
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Nop)); // Placeholder for additional logic
+
+            ilProcessor.InsertBefore(lastInstruction, endLabel);
+            ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Nop)); // End of method
+
+            Console.WriteLine($"Injected nested if obfuscation into method: {type.Name}.{method.Name}");
+        }*/
         /*public static void AddSwitchWithNestedIfAfter(MethodDefinition method, TypeDefinition type)
         {
             if (!method.HasBody || method.ReturnType.IsValueType || method.Name.StartsWith("get_") || method.Name.StartsWith("set_"))
@@ -369,54 +445,6 @@ namespace OBF.Modules
 
             Console.WriteLine($"Injected switch with nested if statements into method: {type.Name}.{method.Name}");
         }*/
-        internal static MethodDefinition CreateJunkMethod(ModuleDefinition module, bool calledByJunk)
-        {
-            var existingClasses = module.Types.Where(t => t.IsClass && !t.IsEnum && !t.IsInterface && !t.IsCompilerGenerated() && !t.IsDelegate()).ToList();
-            // Get a random class from the module
-            var randomClass = existingClasses[Extensions.IntRng(0, existingClasses.Count)];
-
-            var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, module.TypeSystem.Void);
-            randomClass.Methods.Add(junkMethod);
-            var junkIlProcessor = junkMethod.Body.GetILProcessor();
-
-            // Fill the junk method with random junk code
-            var intType = module.TypeSystem.Int32;
-            var resultVariable = new VariableDefinition(intType);
-            junkMethod.Body.Variables.Add(resultVariable);
-
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldc_I4, Extensions.IntRng(-1000, 1000))); // Load constant
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Add)); // Add the two constants
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Stloc, resultVariable)); // Store the result in a local variable
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ldloc, resultVariable)); // Load the local variable onto the stack
-            junkIlProcessor.Append(junkIlProcessor.Create(OpCodes.Ret)); // Return the value
-
-            if (calledByJunk)
-            {
-                if (Extensions.IntRng(0, 100) == 50)
-                    AddSwitchWithNestedIf(junkMethod, randomClass, true);
-
-                if (Extensions.IntRng(0, 50) == 25)
-                    AddNestedIf(junkMethod, randomClass, true);
-
-                if (Extensions.IntRng(0, 50) == 25)
-                    AddIfOpaquePredicates(junkMethod, randomClass, true);
-            }
-            else
-            {
-                if (Extensions.IntRng(0, 50) == 25)
-                    AddSwitchWithNestedIf(junkMethod, randomClass, true);
-
-                if (Extensions.IntRng(0, 5) == 5)
-                    AddNestedIf(junkMethod, randomClass, true);
-
-                if (Extensions.IntRng(0, 5) == 5)
-                    AddIfOpaquePredicates(junkMethod, randomClass, true);
-            }
-            
-            return junkMethod;
-        }
-
         /*private static MethodDefinition CreateJunkMethod(TypeDefinition type, ModuleDefinition module)
         {
             var junkMethod = new MethodDefinition(Renaming.GenerateUniqueName(), MethodAttributes.Private | MethodAttributes.Static, module.TypeSystem.Void);

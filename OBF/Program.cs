@@ -2,9 +2,15 @@
 using Mono.Cecil.Cil;
 using OBF.Modules;
 using OBF.ILProcessing;
+using System;
 using System.Collections.Generic;
-using System.Runtime.ConstrainedExecution;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.ConstrainedExecution;
+using System.Runtime.CompilerServices;
+using CustomAttributeNamedArgument = Mono.Cecil.CustomAttributeNamedArgument;
 
 namespace OBF;
 
@@ -32,7 +38,7 @@ internal class Program
             if (dllFilePath != null)
             {
                 Console.WriteLine($"Found DLL: {dllFilePath}");
-                Obfuscate(dllFilePath);
+                ProcessDll(dllFilePath);
             }
             else
                 Console.WriteLine("No DLL file found in the OBF directory with the given name.");
@@ -41,40 +47,34 @@ internal class Program
         if (dll != null && File.Exists(dll))
         {
             Console.WriteLine($"Found DLL: {dll}");
-            Obfuscate(dll);
+            ProcessDll(dll);
         }
     }
-    public static void Obfuscate(string dllPath)
-    {
-        Console.WriteLine($"Obfuscating DLL: {dllPath}");
 
-        // Create the resolver and add the dependency search path
+    public static void ProcessDll(string dllPath)
+    {
+        Console.WriteLine($"Processing DLL: {dllPath}");
+
         var resolver = new DefaultAssemblyResolver();
         resolver.AddSearchDirectory(Path.Combine(Path.GetDirectoryName(dllPath), "..", "deps"));
         resolver.AddSearchDirectory(Path.GetDirectoryName(dllPath));
         var readerParameters = new ReaderParameters { AssemblyResolver = resolver };
         AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
-        Renaming.OriginalAssembly = assembly;
 
-        //AntiDebug.InitAntiDebug(assembly);
-
-        //StringEncryption.EncryptStrings(assembly); // has issues with some methods (nested?)
-
-        CodeInjection.InjectMethods(assembly); // works, want to add class injection
-        CodeInjection.JunkWithMethodCalls(assembly); // need work
-
-        Renaming.RenameAssembly(assembly); // works, not sure i can do much more
-
-        string newDllPath = Path.Combine(Path.Combine(Directory.GetParent(Environment.CurrentDirectory).FullName, Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath)));
-        string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Hexed\Settings\UnityLoader\VRChat\Cheats\" + Path.GetFileName(newDllPath);
-
+        // Obfuscate
+        Obfuscate(assembly);
+        
+        // Write the modified and obfuscated assembly to a new file
+        string newDllPath = Path.Combine(Path.GetDirectoryName(dllPath), Path.GetFileNameWithoutExtension(dllPath) + "_OBF" + Path.GetExtension(dllPath));
         assembly.Write(newDllPath);
-        Console.WriteLine($"Obfuscated DLL written to: {newDllPath}");
+        Console.WriteLine($"Processed DLL written to: {newDllPath}");
 
+        // Optionally copy to an additional path
+        string additionalPath = @"D:\SteamLibrary\steamapps\common\VRChat\Mods\" + Path.GetFileName(newDllPath);
         try
         {
             File.Copy(newDllPath, additionalPath, true);
-            Console.WriteLine($"Obfuscated DLL copied to: {additionalPath}");
+            Console.WriteLine($"Processed DLL copied to: {additionalPath}");
         }
         catch { Console.WriteLine($"Path does not exist: {additionalPath}"); }
 
@@ -84,5 +84,114 @@ internal class Program
         Console.Write("\nPress any key to close this window . . .");
         Console.ReadLine();
     }
-}
 
+    public static void ModifyAttributes(AssemblyDefinition assembly)
+    {
+        Console.WriteLine("Modifying Attributes in Assembly");
+
+        // Essential attributes to keep
+        var attributesToKeep = new[]
+        {
+            // Assembly metadata
+            "AssemblyTitleAttribute",
+            "AssemblyVersionAttribute",
+            "AssemblyFileVersionAttribute",
+            "AssemblyCompanyAttribute",
+            "AssemblyProductAttribute",
+            "AssemblyCopyrightAttribute",
+            "AssemblyDescriptionAttribute",
+            "AssemblyConfigurationAttribute",
+
+            // Runtime + Compatibility
+            "TargetFrameworkAttribute",
+            "RuntimeCompatibilityAttribute",
+            "AssemblyMetadataAttribute",
+            "CompilationRelaxationsAttribute",
+
+            // Security and IL behavior
+            "SuppressIldasmAttribute",
+            "SecurityPermissionAttribute",
+            "MethodImplAttribute",
+
+            // Obfuscation marker
+            "ObfuscationAttribute"
+        };
+
+        // Remove non-essential attributes
+        var attributesToRemove = assembly.CustomAttributes
+            .Where(attr => !attributesToKeep.Contains(attr.AttributeType.Name))
+            .ToList();
+
+        foreach (var attr in attributesToRemove)
+        {
+            assembly.CustomAttributes.Remove(attr);
+            Console.WriteLine($"Removed Attribute: {attr.AttributeType.Name}");
+        }
+
+        // Modify AssemblyTitle for obfuscation branding
+        foreach (var attr in assembly.CustomAttributes)
+        {
+            if (attr.AttributeType.Name == "AssemblyTitleAttribute")
+            {
+                attr.ConstructorArguments.Clear();
+                attr.ConstructorArguments.Add(new CustomAttributeArgument(
+                    assembly.MainModule.TypeSystem.String, "EXO"));
+                Console.WriteLine("Modified AssemblyTitleAttribute to: EXO");
+            }
+        }
+
+        // Add SuppressIldasmAttribute to discourage IL inspection
+        var suppressIldasmCtor = typeof(SuppressIldasmAttribute).GetConstructor(Type.EmptyTypes);
+        if (suppressIldasmCtor != null)
+        {
+            var suppressIldasmAttr = new CustomAttribute(assembly.MainModule.ImportReference(suppressIldasmCtor));
+            assembly.CustomAttributes.Add(suppressIldasmAttr);
+            Console.WriteLine("Added SuppressIldasmAttribute");
+        }
+
+        // Add generic obfuscation marker
+        var obfuscationCtor = typeof(ObfuscationAttribute).GetConstructor(Type.EmptyTypes);
+        if (obfuscationCtor != null)
+        {
+            var obfuscationAttr = new CustomAttribute(assembly.MainModule.ImportReference(obfuscationCtor));
+            obfuscationAttr.Properties.Add(new CustomAttributeNamedArgument("Exclude", new CustomAttributeArgument(
+                assembly.MainModule.TypeSystem.Boolean, false)));
+            obfuscationAttr.Properties.Add(new CustomAttributeNamedArgument("ApplyToMembers", new CustomAttributeArgument(
+                assembly.MainModule.TypeSystem.Boolean, true)));
+            obfuscationAttr.Properties.Add(new CustomAttributeNamedArgument("Feature", new CustomAttributeArgument(
+                assembly.MainModule.TypeSystem.String, "all")));
+            assembly.CustomAttributes.Add(obfuscationAttr);
+            Console.WriteLine("Added ObfuscationAttribute");
+        }
+
+        // Add MethodImplAttribute with NoOptimization
+        var methodImplCtor = typeof(MethodImplAttribute).GetConstructor(new[] { typeof(MethodImplOptions) });
+        if (methodImplCtor != null)
+        {
+            var methodImplAttr = new CustomAttribute(assembly.MainModule.ImportReference(methodImplCtor));
+            methodImplAttr.ConstructorArguments.Add(new CustomAttributeArgument(
+                assembly.MainModule.TypeSystem.Int32, (int)MethodImplOptions.NoOptimization));
+            assembly.CustomAttributes.Add(methodImplAttr);
+            Console.WriteLine("Added MethodImplOptions.NoOptimization");
+        }
+    }
+
+    public static void Obfuscate(AssemblyDefinition assembly)
+    {
+        Console.WriteLine("Obfuscating Assembly");
+
+        // Modify Attributes
+        //ModifyAttributes(assembly);
+
+        //AntiDebug.InitAntiDebug(assembly);
+
+        //StringEncryption.EncryptStrings(assembly); // has issues with some methods (nested?)
+
+        CodeInjection.InjectMethods(assembly); // works, want to add class injection
+        CodeInjection.JunkWithMethodCalls(assembly); // need work
+
+        Renaming.RenameAssembly(assembly); // works, not sure I can do much more
+
+        Renaming.UpdateMelonInfoAttribute(assembly);
+    }
+}

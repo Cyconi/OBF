@@ -61,7 +61,7 @@ public static class Extensions
     }
     public static void GetReturnType(this ILProcessor ilProcessor, SystemType field)
     {
-        Random random = new Random();
+        Random random = new();
         switch (field)
         {
             case SystemType.Void:

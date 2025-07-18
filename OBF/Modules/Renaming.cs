@@ -21,7 +21,7 @@ public static class Renaming
         foreach (var module in assembly.Modules)
             foreach (var type in module.Types)
                 if (!string.IsNullOrEmpty(type.Namespace))
-                    type.Namespace = GenerateUniqueName(type.Namespace);        
+                    type.Namespace = GenerateUniqueName(type.Namespace);
 
         foreach (TypeDefinition type in assembly.MainModule.Types)
         {
@@ -39,7 +39,7 @@ public static class Renaming
                 if (method.FullName.Contains("IEnumerator"))
                     method.CustomAttributes.Clear();
 
-                if (!method.HasBody || method.IsVirtual || method.DeclaringType != type)
+                if (method.Name.Equals("CallOnLoad") || !method.HasBody || method.IsVirtual || method.DeclaringType != type || method.IsReuseSlot)
                     continue;
 
                 method.CustomAttributes.Clear();
@@ -61,18 +61,6 @@ public static class Renaming
 
                 property.CustomAttributes.Clear();
                 property.Name = GenerateUniqueName(property.Name);
-
-                if (property.GetMethod != null && property.GetMethod.DeclaringType == type)
-                {
-                    property.GetMethod.CustomAttributes.Clear();
-                    property.GetMethod.Name = GenerateUniqueName(property.GetMethod.Name);
-                }
-
-                if (property.SetMethod != null && property.SetMethod.DeclaringType == type)
-                {
-                    property.SetMethod.CustomAttributes.Clear();
-                    property.SetMethod.Name = GenerateUniqueName(property.SetMethod.Name);
-                } 
             }
 
             foreach (FieldDefinition field in type.Fields)
@@ -82,9 +70,10 @@ public static class Renaming
                     field.Name = GenerateUniqueName(field.Name);
                 }
         }
-        //UpdateReferences(assembly);
+
         ValidateChanges(assembly);
     }
+
     private static void ClearMetadata(AssemblyDefinition assembly)
     {
         foreach (var module in assembly.Modules)
@@ -98,59 +87,6 @@ public static class Renaming
             }
         }
     }
-    private static void UpdateReferences(AssemblyDefinition assembly)
-    {
-        foreach (var module in assembly.Modules)
-        {
-            foreach (var type in module.Types)
-            {
-                foreach (var method in type.Methods)
-                {
-                    if (method.Body == null || method.Body.Instructions == null)
-                        continue;
-
-                    foreach (var instruction in method.Body.Instructions)
-                    {
-                        if (instruction.Operand is MethodReference methodRef)
-                        {
-                            // Ensure the method reference is resolved before renaming
-                            if (methodRef.Resolve() != null)
-                            {
-                                // Skip renaming MethodSpecification
-                                if (methodRef is MethodSpecification)
-                                    continue;
-
-                                methodRef.Name = GenerateUniqueName(methodRef.Name);
-                            }
-                        }
-                        else if (instruction.Operand is FieldReference fieldRef)
-                        {
-                            // Ensure the field reference is resolved before renaming
-                            if (fieldRef.Resolve() != null)
-                            {
-                                fieldRef.Name = GenerateUniqueName(fieldRef.Name);
-                            }
-                        }
-                        else if (instruction.Operand is TypeReference typeRef)
-                        {
-                            // Ensure the type reference is resolved before renaming
-                            if (typeRef.Resolve() != null)
-                            {
-                                // Skip renaming TypeSpecification
-                                if (typeRef is TypeSpecification)
-                                    continue;
-
-                                typeRef.Name = GenerateUniqueName(typeRef.Name);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-
     private static void ValidateChanges(AssemblyDefinition assembly)
     {
         foreach (var module in assembly.Modules)
@@ -176,6 +112,24 @@ public static class Renaming
     }
 
     private static readonly Dictionary<string, string> nameMap = [];
+    public static void UpdateMelonInfoAttribute(AssemblyDefinition assembly)
+    {
+        foreach (var attr in assembly.CustomAttributes)
+        {
+            if (attr.AttributeType.FullName == "MelonLoader.MelonInfoAttribute")
+            {
+                if (attr.ConstructorArguments[0].Value is not TypeReference oldType || !nameMap.TryGetValue(oldType.FullName, out var newTypeName))
+                    continue;
+
+                var newType = assembly.MainModule.Types.FirstOrDefault(t => t.FullName == newTypeName);
+                if (newType != null)
+                {
+                    attr.ConstructorArguments[0] = new CustomAttributeArgument(assembly.MainModule.ImportReference(typeof(Type)), newType);
+                    Console.WriteLine($"Updated MelonInfo to use renamed type: {newType.FullName}");
+                }
+            }
+        }
+    }
     public static string GenerateUniqueName() => GenerateUniqueName("Unnamed");
     private static string GenerateUniqueName(string originalName)
     {
@@ -193,7 +147,7 @@ public static class Renaming
 
         if (string.IsNullOrEmpty(member.Name))
             member.Name = newName;
-        
+
         nameMap[member.Name] = newName;
         Console.WriteLine($"Renaming {member.Name} to {newName}...");
         return newName;
@@ -203,7 +157,6 @@ public static class Renaming
         foreach (var entry in nameMap)
             Console.WriteLine($"Original Name: {entry.Key}, New Name: {entry.Value}");
     }
-
     public static string GetRealisticName() => methodNames[random.Next(methodNames.Length)]; 
     static readonly string[] methodNames =
     [
